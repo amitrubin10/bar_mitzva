@@ -51,6 +51,7 @@ function hasAnyTiming(){
 /* ---------- render verses ---------- */
 const versesEl = document.getElementById("verses");
 const PLAY_SVG = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+const PAUSE_SVG = '<svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>';
 function buildVerses(){
   versesEl.innerHTML = "";
   VERSES.forEach((v, vi)=>{
@@ -58,8 +59,8 @@ function buildVerses(){
     row.className = "verse"; row.dataset.vi = vi;
     const play = document.createElement("div");
     play.className = "play"; play.innerHTML = PLAY_SVG;
-    play.title = "השמע פסוק זה";
-    play.addEventListener("click", ()=> playVerse(vi));
+    play.title = "השמע / השהה פסוק זה";
+    play.addEventListener("click", ()=> onVerseBtn(vi));
     const num = document.createElement("div");
     num.className = "num"; num.textContent = v.ref;
     const text = document.createElement("div");
@@ -84,12 +85,56 @@ function clearHL(){
   document.querySelectorAll(".text .w.hl,.text .w.past").forEach(e=>e.classList.remove("hl","past"));
   document.querySelectorAll(".verse.active").forEach(e=>e.classList.remove("active"));
 }
+const nowPause=document.getElementById("nowPause");
+// reflect play/pause state on the verse buttons and the now-bar
+function refreshTransport(){
+  const playing = active!=null && !audio.paused;
+  document.querySelectorAll(".verse").forEach(row=>{
+    const btn=row.querySelector(".play");
+    if(!btn) return;
+    const isThis = (parseInt(row.dataset.vi,10)===active);
+    btn.innerHTML = (isThis && playing) ? PAUSE_SVG : PLAY_SVG;
+  });
+  if(nowPause) nowPause.textContent = playing ? "⏸ השהה" : "▶ המשך";
+}
+
 function stopAll(){
   audio.pause(); if(raf) cancelAnimationFrame(raf); raf=null;
   active=null; stopAt=null; playingAll=false;
   clearHL(); nowbar.classList.remove("show");
+  refreshTransport();
 }
 document.getElementById("nowStop").addEventListener("click", stopAll);
+
+// pause but keep position + highlight, so we can resume from the same spot
+function pausePlayback(){
+  if(active==null) return;
+  audio.pause();
+  if(raf) cancelAnimationFrame(raf); raf=null;
+  refreshTransport();
+}
+function resumePlayback(){
+  if(active==null) return;
+  audio2.pause();
+  audio.playbackRate = speed;
+  audio.play();
+  tick();
+  refreshTransport();
+}
+// verse play button: start / pause / resume depending on state
+function onVerseBtn(vi){
+  if(active===vi){
+    if(audio.paused) resumePlayback(); else pausePlayback();
+  } else {
+    playVerse(vi);
+  }
+}
+if(nowPause){
+  nowPause.addEventListener("click", ()=>{
+    if(active==null) return;
+    if(audio.paused) resumePlayback(); else pausePlayback();
+  });
+}
 
 function playVerse(vi, fromWord){
   const t = timingFor(vi);
@@ -107,6 +152,7 @@ function playVerse(vi, fromWord){
   audio.currentTime = startT;
   audio.play();
   tick();
+  refreshTransport();
 }
 
 function tick(){
@@ -149,6 +195,7 @@ function startAllVerse(vi){
   if(row){ row.classList.add("active"); row.scrollIntoView({behavior:"smooth",block:"center"}); }
   npNum.textContent=VERSES[vi].ref; nowbar.classList.add("show");
   audio.playbackRate=speed; audio.currentTime=t.start; audio.play(); tick();
+  refreshTransport();
 }
 function nextInAll(){
   let n=allIdx+1;

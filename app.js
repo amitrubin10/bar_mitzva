@@ -476,7 +476,7 @@ function startUserRec(vi){
         if(blob.size>0){ recPut(vi,{blob,mime:blob.type,createdAt:Date.now()}).then(()=>{ recorded.add(vi); finish(); }).catch(finish); }
         else finish();
       };
-      recordingVi=vi; mediaRec.start(); recStart=performance.now(); startRecTimer(vi); renderRecBar(vi);
+      recordingVi=vi; mediaRec.start(1000); recStart=performance.now(); startRecTimer(vi); renderRecBar(vi);
     }).catch(err=>{
       alert("לא ניתן לגשת למיקרופון. יש לאשר הרשאת מיקרופון בדפדפן ולנסות שוב.");
     });
@@ -539,11 +539,21 @@ function compareVerse(vi){
     return rec.blob.arrayBuffer()
       .then(ab=>new Promise((res,rej)=>{ const p=ctx.decodeAudioData(ab,res,rej); if(p&&p.then)p.then(res,rej); }))
       .then(buf=>{
-        const N=(ORIG_ENV.points||64);
-        const userEnv=resampleArr(normArr(rmsEnvelope(buf)),N);
-        const corr=pearson(userEnv,oe.env);
-        renderCompare(vi,{corr, userDur:buf.duration, origDur:oe.dur, userEnv, origEnv:oe.env});
         try{ctx.close();}catch(e){}
+        // defer heavy analysis one tick so the "מנתח…" text paints
+        setTimeout(()=>{
+          const N=(ORIG_ENV.points||64);
+          const userEnv=resampleArr(normArr(rmsEnvelope(buf)),N);
+          const corr=pearson(userEnv,oe.env);
+          // ---- pitch / melody (phase 2) ----
+          let melody=null, userPitch=null;
+          if(oe.pitch){
+            const m=toMono16k(buf);
+            const up=pitchRel(m.data, m.sr, N);
+            if(up){ userPitch=up; melody=melodyMatch(up.pitch, up.pvoiced, oe.pitch, oe.pvoiced); }
+          }
+          renderCompare(vi,{corr, userDur:buf.duration, origDur:oe.dur, userEnv, origEnv:oe.env, melody, userPitch, oe});
+        },20);
       });
   }).catch(()=>{ box.innerHTML='<div class="cmp-loading">לא ניתן לנתח את ההקלטה בדפדפן זה.</div>'; });
 }
@@ -556,17 +566,34 @@ function renderCompare(vi,r){
   else if(ratio<0.87){ tempo="מהר מדי — כדאי להאט"; tclass="warn"; }
   else { tempo="לאט מדי — אפשר לזרז"; tclass="warn"; }
   const rlabel = rhythm>=65?"דומה מאוד למקור":rhythm>=40?"דומה חלקית":"שונה מהמקור";
+
+  let melodyRow="", melodyCanvas="";
+  if(r.melody!=null){
+    const mel=Math.max(0,Math.round(r.melody*100));
+    const mclass = mel>=65?"good":(mel>=40?"":"warn");
+    const mlabel = mel>=65?"המנגינה קרובה מאוד למקור 🎵":mel>=40?"המנגינה דומה חלקית":"המנגינה שונה מהמקור";
+    melodyRow='<div class="cmp-row"><span>התאמת מנגינה (טעמים):</span> <b class="'+mclass+'">'+mel+'%</b> <span class="cmp-sub">'+mlabel+'</span></div>';
+    melodyCanvas='<div class="cmp-caption">קו המנגינה (גובה הצליל):</div><canvas class="cmp-canvas pitch" height="110"></canvas>';
+  } else if(r.oe && r.oe.pitch){
+    melodyRow='<div class="cmp-row"><span>מנגינה:</span> <span class="cmp-sub">לא זוהתה מספיק שירה בהקלטה שלך לניתוח המנגינה — נסו להקליט קריאה בטעמים.</span></div>';
+  }
+
   box.innerHTML =
     '<div class="cmp-head">🔍 השוואה למקור <span class="cmp-x" title="סגור">✕</span></div>'+
     '<div class="cmp-rows">'+
       '<div class="cmp-row"><span>קצב:</span> <b class="'+tclass+'">'+tempo+'</b> '+
         '<span class="cmp-sub">(אתה '+r.userDur.toFixed(1)+"ש׳ · מקור "+r.origDur.toFixed(1)+"ש׳)</span></div>"+
       '<div class="cmp-row"><span>התאמת מקצב:</span> <b>'+rhythm+'%</b> <span class="cmp-sub">'+rlabel+'</span></div>'+
+      melodyRow+
     '</div>'+
-    '<canvas class="cmp-canvas" height="90"></canvas>'+
+    '<div class="cmp-caption">עוצמה לאורך הזמן:</div><canvas class="cmp-canvas env" height="80"></canvas>'+
+    melodyCanvas+
     '<div class="cmp-legend"><span class="dot o"></span> המקור &nbsp;&nbsp; <span class="dot u"></span> אתה &nbsp;·&nbsp; זמן ⟸</div>';
   box.querySelector('.cmp-x').addEventListener('click',()=>box.remove());
-  drawEnvelopes(box.querySelector('canvas'), r.origEnv, r.userEnv);
+  drawEnvelopes(box.querySelector('canvas.env'), r.origEnv, r.userEnv);
+  if(r.melody!=null){
+    drawPitch(box.querySelector('canvas.pitch'), r.oe.pitch, r.oe.pvoiced, r.userPitch.pitch, r.userPitch.pvoiced);
+  }
 }
 function drawEnvelopes(cv, orig, user){
   const dpr=window.devicePixelRatio||1;
@@ -580,6 +607,85 @@ function drawEnvelopes(cv, orig, user){
   path(orig); g.lineTo(0,pad+H); g.lineTo(w,pad+H); g.closePath(); g.fillStyle='rgba(244,196,48,0.25)'; g.fill();
   path(orig); g.strokeStyle='rgba(244,196,48,0.95)'; g.lineWidth=2; g.stroke();
   path(user); g.strokeStyle='#5b8cff'; g.lineWidth=2; g.stroke();
+}
+
+/* ---- pitch (melody) analysis ---- */
+function toMono16k(buf){
+  const sr=buf.sampleRate, d=buf.getChannelData(0), target=16000;
+  if(sr===target) return {data:d, sr:target};
+  const n=Math.max(1,Math.round(d.length*target/sr)), out=new Float32Array(n);
+  for(let i=0;i<n;i++){ const p=i*sr/target, lo=Math.floor(p), hi=Math.min(lo+1,d.length-1), f=p-lo; out[i]=d[lo]*(1-f)+d[hi]*f; }
+  return {data:out, sr:target};
+}
+function medianOf(a){ const s=a.slice().sort((x,y)=>x-y); const n=s.length; return n?(n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2):0; }
+function interpNaN(a){
+  const n=a.length; let i=0;
+  // leading
+  while(i<n && isNaN(a[i])) i++;
+  if(i===n) return;
+  for(let k=0;k<i;k++) a[k]=a[i];
+  let last=i;
+  for(let j=i+1;j<n;j++){
+    if(!isNaN(a[j])){
+      if(j>last+1){ const step=(a[j]-a[last])/(j-last); for(let k=last+1;k<j;k++) a[k]=a[last]+step*(k-last); }
+      last=j;
+    }
+  }
+  for(let k=last+1;k<n;k++) a[k]=a[last]; // trailing
+}
+function yinContour(data, sr){
+  const WIN=1024, HOP=320, THRESH=0.15;
+  const tauMin=Math.floor(sr/400), tauMax=Math.min(Math.floor(sr/80),WIN-1), need=WIN+tauMax;
+  const f0s=[], vs=[]; const d=new Float64Array(tauMax+1), dp=new Float64Array(tauMax+1);
+  for(let start=0; start+need<=data.length; start+=HOP){
+    d[0]=0;
+    for(let tau=1;tau<=tauMax;tau++){ let s=0; for(let j=0;j<WIN;j++){ const df=data[start+j]-data[start+j+tau]; s+=df*df; } d[tau]=s; }
+    dp[0]=1; let run=0;
+    for(let tau=1;tau<=tauMax;tau++){ run+=d[tau]; dp[tau]=run>0? d[tau]*tau/run : 1; }
+    let best=-1, tau=tauMin;
+    while(tau<tauMax){ if(dp[tau]<THRESH){ while(tau+1<=tauMax && dp[tau+1]<dp[tau]) tau++; best=tau; break; } tau++; }
+    if(best<0){ let mi=tauMin; for(let k=tauMin;k<=tauMax;k++) if(dp[k]<dp[mi]) mi=k; best=mi; }
+    let shift=0;
+    if(best>1 && best<tauMax){ const a=dp[best-1],b=dp[best],c=dp[best+1],den=a+c-2*b; shift=den?0.5*(a-c)/den:0; }
+    const period=best+shift, f0=period>0? sr/period:0;
+    f0s.push(f0); vs.push(dp[best]<THRESH && f0>=80 && f0<=400);
+  }
+  return {f0s, vs};
+}
+function pitchRel(data, sr, N){
+  const {f0s, vs}=yinContour(data, sr);
+  const voiced=[]; for(let i=0;i<f0s.length;i++) if(vs[i]) voiced.push(f0s[i]);
+  if(voiced.length<5) return null;
+  const med=medianOf(voiced)||1;
+  const st=f0s.map((f,i)=> vs[i]? 12*Math.log2(f/med) : NaN);
+  interpNaN(st);
+  return { pitch:resampleArr(st,N), pvoiced:resampleArr(vs.map(v=>v?1:0),N).map(x=>x>=0.5?1:0) };
+}
+function melodyMatch(userP, userPv, origP, origPv){
+  const a=[], b=[];
+  for(let i=0;i<origP.length;i++){ if(origPv[i] && userPv[i]){ a.push(userP[i]); b.push(origP[i]); } }
+  if(a.length<6) return null;
+  return pearson(a,b);
+}
+function drawPitch(cv, orig, origPv, user, userPv){
+  const dpr=window.devicePixelRatio||1, w=cv.clientWidth||560, h=110;
+  cv.width=w*dpr; cv.height=h*dpr; const g=cv.getContext('2d'); g.scale(dpr,dpr);
+  g.clearRect(0,0,w,h);
+  const pad=8, H=h-pad*2, mid=pad+H/2, LIM=9; // ±9 semitones
+  const y=s=>mid - Math.max(-LIM,Math.min(LIM,s))/LIM*(H/2);
+  // zero line (median)
+  g.strokeStyle='rgba(255,255,255,0.12)'; g.lineWidth=1; g.beginPath(); g.moveTo(0,mid); g.lineTo(w,mid); g.stroke();
+  function line(vals,pv,color){
+    g.strokeStyle=color; g.lineWidth=2.2; g.beginPath(); let pen=false;
+    for(let i=0;i<vals.length;i++){
+      const x=w*(1-i/(vals.length-1));
+      if(pv[i]){ const yy=y(vals[i]); if(pen)g.lineTo(x,yy); else{ g.moveTo(x,yy); pen=true; } }
+      else pen=false;
+    }
+    g.stroke();
+  }
+  line(orig,origPv,'rgba(244,196,48,0.95)');
+  line(user,userPv,'#5b8cff');
 }
 
 function initRecordings(){

@@ -110,7 +110,9 @@ header.top .sub{color:var(--muted);font-size:1rem}
 .cmp-row b.good{color:var(--good)}
 .cmp-row b.warn{color:#ffcf6b}
 .cmp-sub{color:var(--muted);font-size:.82rem}
-.cmp-canvas{width:100%;height:90px;margin-top:8px;background:#0c0e20;border-radius:8px;display:block}
+.cmp-caption{color:var(--muted);font-size:.8rem;margin-top:10px;margin-bottom:2px}
+.cmp-canvas{width:100%;height:90px;margin-top:4px;background:#0c0e20;border-radius:8px;display:block}
+.cmp-canvas.pitch{height:110px}
 .cmp-legend{font-size:.8rem;color:var(--muted);margin-top:5px}
 .cmp-legend .dot{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:middle;margin-inline-start:4px}
 .cmp-legend .dot.o{background:var(--accent)}

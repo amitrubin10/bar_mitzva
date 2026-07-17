@@ -96,8 +96,26 @@ header.top .sub{color:var(--muted);font-size:1rem}
 .minibtn.mine-btn{color:var(--accent);border-color:#4a411d}
 .minibtn.mine-btn:hover{border-color:var(--accent);color:#ffe9a8}
 .minibtn.del-btn:hover{border-color:#ff6b6b;color:#ff9a9a}
+.minibtn.cmp-btn{color:var(--accent2);border-color:#25406b}
+.minibtn.cmp-btn:hover{border-color:var(--accent2);color:#bcd0ff}
 .rec-timer{color:#ff6b6b;font-weight:700;font-variant-numeric:tabular-nums}
 @keyframes recpulse{50%{opacity:.5}}
+
+.cmp-result{margin-top:12px;background:#12142c;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.cmp-head{display:flex;justify-content:space-between;align-items:center;color:var(--accent2);font-weight:700;font-size:.9rem;margin-bottom:6px}
+.cmp-x{cursor:pointer;color:var(--muted)}
+.cmp-x:hover{color:#ff6b6b}
+.cmp-rows{display:flex;flex-direction:column;gap:4px;font-size:.92rem}
+.cmp-row>span{color:var(--muted)}
+.cmp-row b.good{color:var(--good)}
+.cmp-row b.warn{color:#ffcf6b}
+.cmp-sub{color:var(--muted);font-size:.82rem}
+.cmp-canvas{width:100%;height:90px;margin-top:8px;background:#0c0e20;border-radius:8px;display:block}
+.cmp-legend{font-size:.8rem;color:var(--muted);margin-top:5px}
+.cmp-legend .dot{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:middle;margin-inline-start:4px}
+.cmp-legend .dot.o{background:var(--accent)}
+.cmp-legend .dot.u{background:var(--accent2)}
+.cmp-loading{color:var(--muted);font-size:.9rem;padding:6px 0}
 
 @media(max-width:560px){
   .text{font-size:1.4rem;line-height:2.05}

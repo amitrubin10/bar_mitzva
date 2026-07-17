@@ -443,9 +443,11 @@ function renderRecBar(vi){
   bar.appendChild(mkBtn(has?"🎤 הקליטו שוב":"🎤 הקליטו את עצמכם","rec-btn",()=>startUserRec(vi)));
   if(has){
     bar.appendChild(mkBtn("▶ ההקלטה שלי","mine-btn",()=>playMine(vi)));
+    bar.appendChild(mkBtn("🔍 השוואה למקור","cmp-btn",()=>compareVerse(vi)));
     bar.appendChild(mkBtn("🗑 מחק","del-btn",()=>deleteUserRec(vi)));
   }
 }
+function clearCmp(vi){ const b=versesEl.querySelector('.verse[data-vi="'+vi+'"] .cmp-result'); if(b) b.remove(); }
 
 function startRecTimer(vi){
   stopRecTimer();
@@ -460,6 +462,7 @@ function startUserRec(vi){
   const begin=()=>{
     stopAll();                     // stop original playback
     if(mineAudio) mineAudio.pause();
+    clearCmp(vi);                  // old comparison is stale once re-recording
     navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
       recStream=stream; recChunks=[];
       const mime=pickMime();
@@ -501,7 +504,82 @@ function playMine(vi){
 
 function deleteUserRec(vi){
   if(!confirm("למחוק את ההקלטה שלך לפסוק "+VERSES[vi].ref+"?")) return;
-  recDel(vi).then(()=>{ recorded.delete(vi); renderRecBar(vi); });
+  recDel(vi).then(()=>{ recorded.delete(vi); clearCmp(vi); renderRecBar(vi); });
+}
+
+/* ===== Phase 1: compare user recording vs original (tempo + rhythm) ===== */
+function rmsEnvelope(buf){
+  const d=buf.getChannelData(0), sr=buf.sampleRate;
+  const win=Math.max(1,Math.round(sr*0.025)), hop=Math.max(1,Math.round(sr*0.0125));
+  const env=[];
+  for(let i=0;i+win<=d.length;i+=hop){ let s=0; for(let j=0;j<win;j++){ const v=d[i+j]; s+=v*v; } env.push(Math.sqrt(s/win)); }
+  return env.length?env:[0];
+}
+function normArr(a){ let m=0; for(const x of a) if(x>m)m=x; m=m||1; return a.map(x=>x/m); }
+function resampleArr(a,M){ if(a.length===0)return new Array(M).fill(0); if(a.length===1)return new Array(M).fill(a[0]);
+  const o=[]; for(let i=0;i<M;i++){ const p=i/(M-1)*(a.length-1),lo=Math.floor(p),hi=Math.ceil(p),f=p-lo; o.push(a[lo]*(1-f)+a[hi]*f);} return o; }
+function pearson(a,b){ const n=Math.min(a.length,b.length); if(!n)return 0; let ma=0,mb=0;
+  for(let i=0;i<n;i++){ma+=a[i];mb+=b[i];} ma/=n;mb/=n; let d=0,na=0,nb=0;
+  for(let i=0;i<n;i++){ const x=a[i]-ma,y=b[i]-mb; d+=x*y;na+=x*x;nb+=y*y;} return (na&&nb)?d/Math.sqrt(na*nb):0; }
+
+function ensureCmpBox(vi){
+  const body=versesEl.querySelector('.verse[data-vi="'+vi+'"] .vbody');
+  let box=body.querySelector('.cmp-result');
+  if(!box){ box=document.createElement('div'); box.className='cmp-result'; body.appendChild(box); }
+  return box;
+}
+function compareVerse(vi){
+  const oe = window.ORIG_ENV && ORIG_ENV.verses[vi];
+  if(!oe){ alert("אין נתוני מקור לפסוק זה."); return; }
+  const box=ensureCmpBox(vi); box.innerHTML='<div class="cmp-loading">מנתח את ההקלטה…</div>';
+  recGet(vi).then(rec=>{
+    if(!rec){ box.remove(); return; }
+    const Ctx=window.AudioContext||window.webkitAudioContext;
+    const ctx=new Ctx();
+    return rec.blob.arrayBuffer()
+      .then(ab=>new Promise((res,rej)=>{ const p=ctx.decodeAudioData(ab,res,rej); if(p&&p.then)p.then(res,rej); }))
+      .then(buf=>{
+        const N=(ORIG_ENV.points||64);
+        const userEnv=resampleArr(normArr(rmsEnvelope(buf)),N);
+        const corr=pearson(userEnv,oe.env);
+        renderCompare(vi,{corr, userDur:buf.duration, origDur:oe.dur, userEnv, origEnv:oe.env});
+        try{ctx.close();}catch(e){}
+      });
+  }).catch(()=>{ box.innerHTML='<div class="cmp-loading">לא ניתן לנתח את ההקלטה בדפדפן זה.</div>'; });
+}
+function renderCompare(vi,r){
+  const box=ensureCmpBox(vi);
+  const rhythm=Math.max(0,Math.round(r.corr*100));
+  const ratio=r.userDur/r.origDur;
+  let tempo,tclass;
+  if(ratio<=1.15 && ratio>=0.87){ tempo="קצב טוב 👍"; tclass="good"; }
+  else if(ratio<0.87){ tempo="מהר מדי — כדאי להאט"; tclass="warn"; }
+  else { tempo="לאט מדי — אפשר לזרז"; tclass="warn"; }
+  const rlabel = rhythm>=65?"דומה מאוד למקור":rhythm>=40?"דומה חלקית":"שונה מהמקור";
+  box.innerHTML =
+    '<div class="cmp-head">🔍 השוואה למקור <span class="cmp-x" title="סגור">✕</span></div>'+
+    '<div class="cmp-rows">'+
+      '<div class="cmp-row"><span>קצב:</span> <b class="'+tclass+'">'+tempo+'</b> '+
+        '<span class="cmp-sub">(אתה '+r.userDur.toFixed(1)+"ש׳ · מקור "+r.origDur.toFixed(1)+"ש׳)</span></div>"+
+      '<div class="cmp-row"><span>התאמת מקצב:</span> <b>'+rhythm+'%</b> <span class="cmp-sub">'+rlabel+'</span></div>'+
+    '</div>'+
+    '<canvas class="cmp-canvas" height="90"></canvas>'+
+    '<div class="cmp-legend"><span class="dot o"></span> המקור &nbsp;&nbsp; <span class="dot u"></span> אתה &nbsp;·&nbsp; זמן ⟸</div>';
+  box.querySelector('.cmp-x').addEventListener('click',()=>box.remove());
+  drawEnvelopes(box.querySelector('canvas'), r.origEnv, r.userEnv);
+}
+function drawEnvelopes(cv, orig, user){
+  const dpr=window.devicePixelRatio||1;
+  const w=cv.clientWidth||560, h=90;
+  cv.width=w*dpr; cv.height=h*dpr; const g=cv.getContext('2d'); g.scale(dpr,dpr);
+  g.clearRect(0,0,w,h);
+  const pad=8, H=h-pad*2;
+  // right-to-left time axis to match Hebrew reading direction
+  function path(env){ const n=env.length; g.beginPath();
+    for(let i=0;i<n;i++){ const x=w*(1-i/(n-1)); const y=pad+H*(1-env[i]); i?g.lineTo(x,y):g.moveTo(x,y);} }
+  path(orig); g.lineTo(0,pad+H); g.lineTo(w,pad+H); g.closePath(); g.fillStyle='rgba(244,196,48,0.25)'; g.fill();
+  path(orig); g.strokeStyle='rgba(244,196,48,0.95)'; g.lineWidth=2; g.stroke();
+  path(user); g.strokeStyle='#5b8cff'; g.lineWidth=2; g.stroke();
 }
 
 function initRecordings(){

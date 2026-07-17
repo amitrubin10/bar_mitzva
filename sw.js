@@ -1,11 +1,12 @@
 /* Service worker — offline app shell + media caching */
-const CACHE = "ori-bar-mitzva-v9";
+const CACHE = "ori-bar-mitzva-v10";
 const ASSETS = [
   "./",
   "./index.html",
   "./style.css",
   "./data.js",
   "./timings.js",
+  "./original_env.js",
   "./app.js",
   "./manifest.webmanifest",
   "./share3.png",

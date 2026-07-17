@@ -447,7 +447,7 @@ function renderRecBar(vi){
     bar.appendChild(mkBtn("🗑 מחק","del-btn",()=>deleteUserRec(vi)));
   }
 }
-function clearCmp(vi){ const b=versesEl.querySelector('.verse[data-vi="'+vi+'"] .cmp-result'); if(b) b.remove(); }
+function clearCmp(vi){ const b=versesEl.querySelector('.verse[data-vi="'+vi+'"] .cmp-result'); if(b) b.remove(); clearWordColors(vi); }
 
 function startRecTimer(vi){
   stopRecTimer();
@@ -531,51 +531,47 @@ function ensureCmpBox(vi){
 function compareVerse(vi){
   const oe = window.ORIG_ENV && ORIG_ENV.verses[vi];
   if(!oe){ alert("אין נתוני מקור לפסוק זה."); return; }
-  const box=ensureCmpBox(vi); box.innerHTML='<div class="cmp-loading">מנתח את ההקלטה…</div>';
+  const box=ensureCmpBox(vi); box.innerHTML='<div class="cmp-loading">מנתח את ההקלטה ומיישר למקור…</div>';
   recGet(vi).then(rec=>{
     if(!rec){ box.remove(); return; }
-    const Ctx=window.AudioContext||window.webkitAudioContext;
-    const ctx=new Ctx();
+    const Ctx=window.AudioContext||window.webkitAudioContext; const ctx=new Ctx();
     return rec.blob.arrayBuffer()
       .then(ab=>new Promise((res,rej)=>{ const p=ctx.decodeAudioData(ab,res,rej); if(p&&p.then)p.then(res,rej); }))
-      .then(buf=>{
-        try{ctx.close();}catch(e){}
-        // defer heavy analysis one tick so the "מנתח…" text paints
+      .then(buf=>{ try{ctx.close();}catch(e){}
         setTimeout(()=>{
-          const N=(ORIG_ENV.points||64);
-          const userEnv=resampleArr(normArr(rmsEnvelope(buf)),N);
-          const corr=pearson(userEnv,oe.env);
-          // ---- pitch / melody (phase 2) ----
-          let melody=null, userPitch=null;
-          if(oe.pitch){
-            const m=toMono16k(buf);
-            const up=pitchRel(m.data, m.sr, N);
-            if(up){ userPitch=up; melody=melodyMatch(up.pitch, up.pvoiced, oe.pitch, oe.pvoiced); }
+          const HOP=ORIG_ENV.hop||0.04;
+          const userF=computeUserFrames(buf);
+          const origF={fe:oe.fe, fp:oe.fp, fv:oe.fv, hop:HOP};
+          let scores=null, overall=null;
+          if(userF){
+            const path=dtwPath(userF, origF);
+            scores=wordScores(path, userF, origF, oe.words, HOP);
+            const valid=scores.filter(s=>s.score!=null);
+            overall=valid.length? Math.round(valid.reduce((a,s)=>a+s.score,0)/valid.length) : null;
+            colorWords(vi, scores);
           }
-          renderCompare(vi,{corr, userDur:buf.duration, origDur:oe.dur, userEnv, origEnv:oe.env, melody, userPitch, oe});
+          renderCompare(vi,{userDur:buf.duration, origDur:oe.dur, oe, userF, scores, overall});
         },20);
       });
-  }).catch(()=>{ box.innerHTML='<div class="cmp-loading">לא ניתן לנתח את ההקלטה בדפדפן זה.</div>'; });
+  }).catch(()=>{ ensureCmpBox(vi).innerHTML='<div class="cmp-loading">לא ניתן לנתח את ההקלטה בדפדפן זה.</div>'; });
 }
 function renderCompare(vi,r){
   const box=ensureCmpBox(vi);
-  const rhythm=Math.max(0,Math.round(r.corr*100));
   const ratio=r.userDur/r.origDur;
   let tempo,tclass;
   if(ratio<=1.15 && ratio>=0.87){ tempo="קצב טוב 👍"; tclass="good"; }
   else if(ratio<0.87){ tempo="מהר מדי — כדאי להאט"; tclass="warn"; }
   else { tempo="לאט מדי — אפשר לזרז"; tclass="warn"; }
-  const rlabel = rhythm>=65?"דומה מאוד למקור":rhythm>=40?"דומה חלקית":"שונה מהמקור";
 
-  let melodyRow="", melodyCanvas="";
-  if(r.melody!=null){
-    const mel=Math.max(0,Math.round(r.melody*100));
-    const mclass = mel>=65?"good":(mel>=40?"":"warn");
-    const mlabel = mel>=65?"המנגינה קרובה מאוד למקור 🎵":mel>=40?"המנגינה דומה חלקית":"המנגינה שונה מהמקור";
-    melodyRow='<div class="cmp-row"><span>התאמת מנגינה (טעמים):</span> <b class="'+mclass+'">'+mel+'%</b> <span class="cmp-sub">'+mlabel+'</span></div>';
-    melodyCanvas='<div class="cmp-caption">קו המנגינה (גובה הצליל):</div><canvas class="cmp-canvas pitch" height="110"></canvas>';
-  } else if(r.oe && r.oe.pitch){
-    melodyRow='<div class="cmp-row"><span>מנגינה:</span> <span class="cmp-sub">לא זוהתה מספיק שירה בהקלטה שלך לניתוח המנגינה — נסו להקליט קריאה בטעמים.</span></div>';
+  let overallRow="", pitchCanvas="";
+  const canPitch = r.overall!=null && r.oe.fp && r.userF && r.userF.fp;
+  if(r.overall!=null){
+    const oc=r.overall>=75?"good":(r.overall>=50?"":"warn");
+    overallRow='<div class="cmp-row"><span>דיוק כולל:</span> <b class="'+oc+'">'+r.overall+'%</b></div>'+
+      '<div class="cmp-row"><span class="cmp-sub">המילים צבועות על הפסוק: <b class="wg">ירוק</b>=מדויק · <b class="wo">צהוב</b>=כמעט · <b class="wb">אדום</b>=כדאי לתרגל</span></div>';
+    if(canPitch) pitchCanvas='<div class="cmp-caption">קו המנגינה (אתה מול המקור):</div><canvas class="cmp-canvas pitch" height="110"></canvas>';
+  } else {
+    overallRow='<div class="cmp-row"><span class="cmp-sub">לא זוהתה מספיק שירה בהקלטה לניתוח פר-מילה. נסו להקליט קריאה בטעמים.</span></div>';
   }
 
   box.innerHTML =
@@ -583,17 +579,94 @@ function renderCompare(vi,r){
     '<div class="cmp-rows">'+
       '<div class="cmp-row"><span>קצב:</span> <b class="'+tclass+'">'+tempo+'</b> '+
         '<span class="cmp-sub">(אתה '+r.userDur.toFixed(1)+"ש׳ · מקור "+r.origDur.toFixed(1)+"ש׳)</span></div>"+
-      '<div class="cmp-row"><span>התאמת מקצב:</span> <b>'+rhythm+'%</b> <span class="cmp-sub">'+rlabel+'</span></div>'+
-      melodyRow+
+      overallRow+
     '</div>'+
-    '<div class="cmp-caption">עוצמה לאורך הזמן:</div><canvas class="cmp-canvas env" height="80"></canvas>'+
-    melodyCanvas+
-    '<div class="cmp-legend"><span class="dot o"></span> המקור &nbsp;&nbsp; <span class="dot u"></span> אתה &nbsp;·&nbsp; זמן ⟸</div>';
-  box.querySelector('.cmp-x').addEventListener('click',()=>box.remove());
-  drawEnvelopes(box.querySelector('canvas.env'), r.origEnv, r.userEnv);
-  if(r.melody!=null){
-    drawPitch(box.querySelector('canvas.pitch'), r.oe.pitch, r.oe.pvoiced, r.userPitch.pitch, r.userPitch.pvoiced);
+    pitchCanvas+
+    (canPitch?'<div class="cmp-legend"><span class="dot o"></span> המקור &nbsp;&nbsp; <span class="dot u"></span> אתה &nbsp;·&nbsp; זמן ⟸</div>':'');
+  box.querySelector('.cmp-x').addEventListener('click',()=>{ box.remove(); clearWordColors(vi); });
+  if(canPitch){
+    const N=64;
+    const op=resampleArr(r.oe.fp,N), ov=resampleArr(r.oe.fv,N).map(x=>x>=0.5?1:0);
+    const up=resampleArr(r.userF.fp,N), uv=resampleArr(r.userF.fv,N).map(x=>x>=0.5?1:0);
+    drawPitch(box.querySelector('canvas.pitch'), op, ov, up, uv);
   }
+}
+
+/* ---- phase 3: frame features, DTW alignment, per-word scoring ---- */
+function computeUserFrames(buf){
+  const m=toMono16k(buf), data=m.data, sr=m.sr;
+  const WIN=1024, HOP=Math.round(sr*0.04), THRESH=0.15;
+  const tauMin=Math.floor(sr/400), tauMax=Math.min(Math.floor(sr/80),WIN-1), NEED=WIN+tauMax;
+  const fe=[], f0s=[], fv=[]; const d=new Float64Array(tauMax+1), dp=new Float64Array(tauMax+1);
+  for(let s=0; s+NEED<=data.length; s+=HOP){
+    let e=0; for(let j=0;j<WIN;j++){ const x=data[s+j]; e+=x*x; } fe.push(Math.sqrt(e/WIN));
+    d[0]=0;
+    for(let tau=1;tau<=tauMax;tau++){ let ss=0; for(let j=0;j<WIN;j++){ const df=data[s+j]-data[s+j+tau]; ss+=df*df; } d[tau]=ss; }
+    dp[0]=1; let run=0;
+    for(let tau=1;tau<=tauMax;tau++){ run+=d[tau]; dp[tau]=run>0? d[tau]*tau/run : 1; }
+    let best=-1, tau=tauMin;
+    while(tau<tauMax){ if(dp[tau]<THRESH){ while(tau+1<=tauMax && dp[tau+1]<dp[tau]) tau++; best=tau; break; } tau++; }
+    if(best<0){ let mi=tauMin; for(let k=tauMin;k<=tauMax;k++) if(dp[k]<dp[mi]) mi=k; best=mi; }
+    let shift=0; if(best>1&&best<tauMax){ const a=dp[best-1],b=dp[best],c=dp[best+1],den=a+c-2*b; shift=den?0.5*(a-c)/den:0; }
+    const per=best+shift, f0=per>0? sr/per:0;
+    f0s.push(f0); fv.push((dp[best]<THRESH && f0>=80 && f0<=400)?1:0);
+  }
+  if(!fe.length) return null;
+  let mx=0; for(const x of fe) if(x>mx) mx=x; mx=mx||1; for(let i=0;i<fe.length;i++) fe[i]/=mx;
+  const voiced=[]; for(let i=0;i<f0s.length;i++) if(fv[i]) voiced.push(f0s[i]);
+  let fp=null;
+  if(voiced.length>=5){ const med=medianOf(voiced)||1; fp=f0s.map((f,i)=> fv[i]? 12*Math.log2(f/med):NaN); interpNaN(fp); }
+  return {fe, fp, fv, hop:0.04, dur:buf.duration};
+}
+function dtwPath(userF, origF){
+  const n=userF.fe.length, m=origF.fe.length; const INF=1e18;
+  const bt=new Uint8Array(n*m);
+  let prev=new Float64Array(m+1).fill(INF); prev[0]=0;
+  const cur=new Float64Array(m+1);
+  for(let i=1;i<=n;i++){
+    cur[0]=INF; const ue=userF.fe[i-1], uv=userF.fv[i-1];
+    for(let j=1;j<=m;j++){
+      const oe=origF.fe[j-1], ov=origF.fv[j-1];
+      const c=2*Math.abs(ue-oe) + (uv!==ov?0.5:0);   // align on energy + voicing (melody-independent)
+      let mn=prev[j-1], ch=2; if(prev[j]<mn){mn=prev[j];ch=0;} if(cur[j-1]<mn){mn=cur[j-1];ch=1;}
+      cur[j]=c+mn; bt[(i-1)*m+(j-1)]=ch;
+    }
+    prev.set(cur);
+  }
+  let i=n,j=m; const path=[];
+  while(i>0&&j>0){ path.push([i-1,j-1]); const ch=bt[(i-1)*m+(j-1)]; if(ch===2){i--;j--;} else if(ch===0){i--;} else {j--;} }
+  path.reverse(); return path;
+}
+function wordScores(path, userF, origF, words, hop){
+  const m=origF.fe.length; const o2u=Array.from({length:m},()=>[]);
+  for(const pr of path){ o2u[pr[1]].push(pr[0]); }
+  return words.map(function(w){
+    let oj0=Math.max(0,Math.floor(w[0]/hop)), oj1=Math.min(m-1,Math.ceil(w[1]/hop)); if(oj1<oj0) oj1=oj0;
+    let sum=0,cnt=0, eSum=0,eCnt=0;
+    for(let oj=oj0;oj<=oj1;oj++){
+      for(const ui of o2u[oj]){
+        eSum+=userF.fe[ui]; eCnt++;
+        if(origF.fp && userF.fp && origF.fv[oj] && userF.fv[ui]){ sum+=Math.abs(userF.fp[ui]-origF.fp[oj]); cnt++; }
+      }
+    }
+    const avgE = eCnt? eSum/eCnt : 0;
+    let score, dev=null;
+    if(avgE<0.06){ score=0; }                                   // missed / silent
+    else if(cnt>=2){ dev=sum/cnt; score=Math.max(0,Math.min(100, Math.round(100-(dev-1)*18))); }
+    else { score=60; }                                          // unmeasurable melody -> neutral
+    return {score, dev};
+  });
+}
+function colorWords(vi, scores){
+  clearWordColors(vi);
+  const row=versesEl.querySelector('.verse[data-vi="'+vi+'"]'); if(!row) return;
+  const spans=row.querySelectorAll(".text .w");
+  scores.forEach(function(s,wi){ const sp=spans[wi]; if(!sp) return;
+    sp.classList.add(s.score>=75?"wgood":(s.score>=50?"wok":"woff")); });
+}
+function clearWordColors(vi){
+  const row=versesEl.querySelector('.verse[data-vi="'+vi+'"]'); if(!row) return;
+  row.querySelectorAll(".text .w.wgood,.text .w.wok,.text .w.woff").forEach(e=>e.classList.remove("wgood","wok","woff"));
 }
 function drawEnvelopes(cv, orig, user){
   const dpr=window.devicePixelRatio||1;

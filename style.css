@@ -118,6 +118,12 @@ header.top .sub{color:var(--muted);font-size:1rem}
 .cmp-legend .dot.o{background:var(--accent)}
 .cmp-legend .dot.u{background:var(--accent2)}
 .cmp-loading{color:var(--muted);font-size:.9rem;padding:6px 0}
+.text .w.wgood{border-bottom:3px solid var(--good)}
+.text .w.wok{border-bottom:3px solid #ffcf6b}
+.text .w.woff{border-bottom:3px solid #ff6b6b}
+.cmp-sub .wg{color:var(--good)}
+.cmp-sub .wo{color:#ffcf6b}
+.cmp-sub .wb{color:#ff6b6b}
 
 @media(max-width:560px){
   .text{font-size:1.4rem;line-height:2.05}

@@ -265,7 +265,7 @@ document.getElementById("edApplyBounds").addEventListener("click", ()=>{
   const vi=curVi();
   const s=parseFloat(document.getElementById("edStartIn").value);
   const e=parseFloat(document.getElementById("edEndIn").value);
-  if(isNaN(s)||isNaN(e)||e<=s){ alert("הזינו זמן התחלה וסיום תקינים (סיום גדול מהתחלה)."); return; }
+  if(isNaN(s)||isNaN(e)||e<=s){ uiAlert("הזינו זמן התחלה וסיום תקינים (סיום גדול מהתחלה).",{icon:"⚠️"}); return; }
   const ex = (overrides.verses&&overrides.verses[vi])||{};
   // if word count-consistent words exist keep them, else drop so they redistribute
   let words = ex.words && ex.words.length===VERSES[vi].words.length ? null : null;
@@ -370,8 +370,8 @@ document.getElementById("edLoadJson").addEventListener("click", ()=>{
     overrides={verses:{}};
     d.verses.forEach((v,i)=>{ if(v) overrides.verses[i]=v; });
     saveOverrides(overrides); refreshEditor(); updateWarn();
-    alert("נטען בהצלחה ✓");
-  }catch(err){ alert("JSON לא תקין."); }
+    uiAlert("הזמנים נטענו בהצלחה ✓",{icon:"✅"});
+  }catch(err){ uiAlert("ה-JSON אינו תקין.",{icon:"⚠️"}); }
 });
 
 /* ---------- warn if no timing at all ---------- */
@@ -400,6 +400,35 @@ if(installBtn){
   });
 }
 window.addEventListener("appinstalled", ()=>{ if(installBtn) installBtn.style.display="none"; });
+
+/* ================= styled dialogs (replace native alert/confirm) ================= */
+function uiModal(opts){
+  return new Promise(function(resolve){
+    const hasCancel = opts.cancelText!==null && opts.cancelText!==undefined;
+    const ov=document.createElement("div"); ov.className="modal-ov";
+    const box=document.createElement("div"); box.className="modal-box"+(opts.danger?" danger":"");
+    let html="";
+    if(opts.icon) html+='<div class="modal-icon">'+opts.icon+'</div>';
+    if(opts.title) html+='<div class="modal-title">'+opts.title+'</div>';
+    html+='<div class="modal-msg">'+opts.message+'</div><div class="modal-btns"></div>';
+    box.innerHTML=html;
+    const btns=box.querySelector(".modal-btns");
+    let done=false;
+    function close(val){ if(done)return; done=true; ov.classList.remove("show"); document.removeEventListener("keydown",onkey);
+      setTimeout(function(){ ov.remove(); }, 180); resolve(val); }
+    if(hasCancel){ const c=document.createElement("button"); c.className="modal-btn cancel"; c.textContent=opts.cancelText||"ביטול"; c.onclick=function(){close(false);}; btns.appendChild(c); }
+    const ok=document.createElement("button"); ok.className="modal-btn ok"+(opts.danger?" danger":""); ok.textContent=opts.okText||"אישור"; ok.onclick=function(){close(true);}; btns.appendChild(ok);
+    ov.appendChild(box); document.body.appendChild(ov);
+    void ov.offsetWidth;                 // force reflow so the transition runs (no rAF dependency)
+    ov.classList.add("show");
+    setTimeout(function(){ try{ok.focus();}catch(e){} }, 60);
+    ov.addEventListener("click",function(e){ if(e.target===ov) close(hasCancel?false:true); });
+    function onkey(e){ if(e.key==="Enter"){ e.preventDefault(); close(true); } else if(e.key==="Escape"){ e.preventDefault(); close(hasCancel?false:true); } }
+    document.addEventListener("keydown",onkey);
+  });
+}
+function uiConfirm(message,opts){ opts=opts||{}; return uiModal({message:message, title:opts.title, icon:opts.icon, okText:opts.okText||"אישור", cancelText:opts.cancelText||"ביטול", danger:opts.danger}); }
+function uiAlert(message,opts){ opts=opts||{}; return uiModal({message:message, title:opts.title, icon:opts.icon, okText:opts.okText||"הבנתי", cancelText:null}); }
 
 /* ================= USER RECORDINGS (record your own reading) ================= */
 const DB_NAME="toraOr", STORE="recordings";
@@ -478,7 +507,7 @@ function startUserRec(vi){
       };
       recordingVi=vi; mediaRec.start(1000); recStart=performance.now(); startRecTimer(vi); renderRecBar(vi);
     }).catch(err=>{
-      alert("לא ניתן לגשת למיקרופון. יש לאשר הרשאת מיקרופון בדפדפן ולנסות שוב.");
+      uiAlert("לא ניתן לגשת למיקרופון. יש לאשר הרשאת מיקרופון בדפדפן ולנסות שוב.",{icon:"🎤",title:"נדרשת הרשאת מיקרופון"});
     });
   };
   if(recordingVi!=null){ stopUserRec().then(begin); } else begin();
@@ -503,8 +532,10 @@ function playMine(vi){
 }
 
 function deleteUserRec(vi){
-  if(!confirm("למחוק את ההקלטה שלך לפסוק "+VERSES[vi].ref+"?")) return;
-  recDel(vi).then(()=>{ recorded.delete(vi); clearCmp(vi); renderRecBar(vi); });
+  uiConfirm("למחוק את ההקלטה שלך לפסוק "+VERSES[vi].ref+"?", {icon:"🗑", okText:"מחק", cancelText:"ביטול", danger:true}).then(function(ok){
+    if(!ok) return;
+    recDel(vi).then(()=>{ recorded.delete(vi); clearCmp(vi); renderRecBar(vi); });
+  });
 }
 
 /* ===== Phase 1: compare user recording vs original (tempo + rhythm) ===== */
@@ -530,7 +561,7 @@ function ensureCmpBox(vi){
 }
 function compareVerse(vi){
   const oe = window.ORIG_ENV && ORIG_ENV.verses[vi];
-  if(!oe){ alert("אין נתוני מקור לפסוק זה."); return; }
+  if(!oe){ uiAlert("אין נתוני מקור לפסוק זה.",{icon:"ℹ️"}); return; }
   const box=ensureCmpBox(vi); box.innerHTML='<div class="cmp-loading">מנתח את ההקלטה ומיישר למקור…</div>';
   recGet(vi).then(rec=>{
     if(!rec){ box.remove(); return; }

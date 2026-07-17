@@ -127,8 +127,18 @@
 <script src="app.js"></script>
 <script>
   if ("serviceWorker" in navigator) {
+    // If a SW already controls this page, a controller change means a new
+    // version activated — reload once to show it immediately.
+    var __refreshing = false;
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.addEventListener("controllerchange", function () {
+        if (__refreshing) return; __refreshing = true; window.location.reload();
+      });
+    }
     window.addEventListener("load", function () {
-      navigator.serviceWorker.register("sw.js").catch(function(){});
+      navigator.serviceWorker.register("sw.js").then(function (reg) {
+        if (reg && reg.update) { try { reg.update(); } catch (e) {} }
+      }).catch(function () {});
     });
   }
 </script>

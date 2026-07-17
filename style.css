@@ -83,10 +83,27 @@ header.top .sub{color:var(--muted);font-size:1rem}
   color:#1a1400;box-shadow:0 0 14px var(--marker-glow),0 0 0 2px var(--marker);border-radius:5px;
 }
 .text .w.past{color:var(--done)}
+.vbody{flex:1;min-width:0}
+.recbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px;
+  padding-top:12px;border-top:1px dashed var(--line)}
+.minibtn{cursor:pointer;user-select:none;font-size:.85rem;font-weight:600;
+  padding:6px 12px;border-radius:999px;border:1px solid var(--line);
+  background:#161832;color:var(--muted);transition:.15s;white-space:nowrap}
+.minibtn:hover{border-color:var(--accent2);color:var(--ink)}
+.minibtn.rec-btn{color:#ff9a9a;border-color:#5a2a2a}
+.minibtn.rec-btn:hover{background:#2a1414;border-color:#ff6b6b;color:#ffd0d0}
+.minibtn.rec-stop{background:#ff4d4d;color:#fff;border-color:#ff4d4d;animation:recpulse 1s infinite}
+.minibtn.mine-btn{color:var(--accent);border-color:#4a411d}
+.minibtn.mine-btn:hover{border-color:var(--accent);color:#ffe9a8}
+.minibtn.del-btn:hover{border-color:#ff6b6b;color:#ff9a9a}
+.rec-timer{color:#ff6b6b;font-weight:700;font-variant-numeric:tabular-nums}
+@keyframes recpulse{50%{opacity:.5}}
+
 @media(max-width:560px){
   .text{font-size:1.4rem;line-height:2.05}
   .play{width:40px;height:40px}
   header.top h1{font-size:1.3rem}
+  .minibtn{font-size:.8rem;padding:6px 10px}
 }
 
 /* separate short recording box */

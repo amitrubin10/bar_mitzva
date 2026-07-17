@@ -72,7 +72,13 @@ function buildVerses(){
       text.appendChild(s);
       text.appendChild(document.createTextNode(" "));
     });
-    row.appendChild(play); row.appendChild(num); row.appendChild(text);
+    const body = document.createElement("div");
+    body.className = "vbody";
+    body.appendChild(text);
+    const recbar = document.createElement("div");
+    recbar.className = "recbar";
+    body.appendChild(recbar);
+    row.appendChild(play); row.appendChild(num); row.appendChild(body);
     versesEl.appendChild(row);
   });
 }
@@ -395,8 +401,120 @@ if(installBtn){
 }
 window.addEventListener("appinstalled", ()=>{ if(installBtn) installBtn.style.display="none"; });
 
+/* ================= USER RECORDINGS (record your own reading) ================= */
+const DB_NAME="toraOr", STORE="recordings";
+function idb(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open(DB_NAME,1);
+    r.onupgradeneeded=()=>{ if(!r.result.objectStoreNames.contains(STORE)) r.result.createObjectStore(STORE); };
+    r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);
+  });
+}
+function recGet(vi){ return idb().then(db=>new Promise((res,rej)=>{ const t=db.transaction(STORE).objectStore(STORE).get(vi); t.onsuccess=()=>res(t.result||null); t.onerror=()=>rej(t.error); })); }
+function recPut(vi,val){ return idb().then(db=>new Promise((res,rej)=>{ const t=db.transaction(STORE,"readwrite").objectStore(STORE).put(val,vi); t.onsuccess=()=>res(); t.onerror=()=>rej(t.error); })); }
+function recDel(vi){ return idb().then(db=>new Promise((res,rej)=>{ const t=db.transaction(STORE,"readwrite").objectStore(STORE).delete(vi); t.onsuccess=()=>res(); t.onerror=()=>rej(t.error); })); }
+function recKeys(){ return idb().then(db=>new Promise((res,rej)=>{ const t=db.transaction(STORE).objectStore(STORE).getAllKeys(); t.onsuccess=()=>res(t.result||[]); t.onerror=()=>rej(t.error); })); }
+
+const recorded = new Set();
+let mediaRec=null, recChunks=[], recStream=null, recordingVi=null, recTimer=null, recStart=0;
+let mineAudio=null, mineUrl=null;
+
+function pickMime(){
+  const c=["audio/webm;codecs=opus","audio/webm","audio/mp4","audio/aac","audio/ogg"];
+  if(window.MediaRecorder && MediaRecorder.isTypeSupported)
+    for(const m of c){ try{ if(MediaRecorder.isTypeSupported(m)) return m; }catch(e){} }
+  return "";
+}
+function fmtDur(s){ const m=Math.floor(s/60), ss=Math.floor(s%60); return m+":"+(ss<10?"0":"")+ss; }
+
+function mkBtn(txt,cls,onclick){ const b=document.createElement("span"); b.className="minibtn "+(cls||""); b.textContent=txt; b.addEventListener("click",onclick); return b; }
+
+function renderRecBar(vi){
+  const bar=versesEl.querySelector('.verse[data-vi="'+vi+'"] .recbar');
+  if(!bar) return;
+  bar.innerHTML="";
+  if(recordingVi===vi){
+    bar.appendChild(mkBtn("⏹ עצור הקלטה","rec-stop",()=>stopUserRec()));
+    const t=document.createElement("span"); t.className="rec-timer"; t.id="rectimer-"+vi; t.textContent="● 0:00";
+    bar.appendChild(t);
+    return;
+  }
+  const has=recorded.has(vi);
+  bar.appendChild(mkBtn(has?"🎤 הקליטו שוב":"🎤 הקליטו את עצמכם","rec-btn",()=>startUserRec(vi)));
+  if(has){
+    bar.appendChild(mkBtn("▶ ההקלטה שלי","mine-btn",()=>playMine(vi)));
+    bar.appendChild(mkBtn("🗑 מחק","del-btn",()=>deleteUserRec(vi)));
+  }
+}
+
+function startRecTimer(vi){
+  stopRecTimer();
+  recTimer=setInterval(()=>{
+    const el=document.getElementById("rectimer-"+vi);
+    if(el) el.textContent="● "+fmtDur((performance.now()-recStart)/1000);
+  },200);
+}
+function stopRecTimer(){ if(recTimer){ clearInterval(recTimer); recTimer=null; } }
+
+function startUserRec(vi){
+  const begin=()=>{
+    stopAll();                     // stop original playback
+    if(mineAudio) mineAudio.pause();
+    navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
+      recStream=stream; recChunks=[];
+      const mime=pickMime();
+      try{ mediaRec = mime ? new MediaRecorder(stream,{mimeType:mime}) : new MediaRecorder(stream); }
+      catch(e){ mediaRec = new MediaRecorder(stream); }
+      mediaRec.ondataavailable=ev=>{ if(ev.data && ev.data.size) recChunks.push(ev.data); };
+      mediaRec.onstop=()=>{
+        const blob=new Blob(recChunks,{type:(mediaRec&&mediaRec.mimeType)||"audio/webm"});
+        if(recStream){ recStream.getTracks().forEach(t=>t.stop()); }
+        const finish=()=>{ recordingVi=null; recStream=null; mediaRec=null; stopRecTimer(); renderRecBar(vi); };
+        if(blob.size>0){ recPut(vi,{blob,mime:blob.type,createdAt:Date.now()}).then(()=>{ recorded.add(vi); finish(); }).catch(finish); }
+        else finish();
+      };
+      recordingVi=vi; mediaRec.start(); recStart=performance.now(); startRecTimer(vi); renderRecBar(vi);
+    }).catch(err=>{
+      alert("לא ניתן לגשת למיקרופון. יש לאשר הרשאת מיקרופון בדפדפן ולנסות שוב.");
+    });
+  };
+  if(recordingVi!=null){ stopUserRec().then(begin); } else begin();
+}
+
+function stopUserRec(){
+  return new Promise(res=>{
+    if(mediaRec && mediaRec.state!=="inactive"){ mediaRec.addEventListener("stop",()=>res(),{once:true}); mediaRec.stop(); }
+    else res();
+  });
+}
+
+function playMine(vi){
+  stopAll();
+  recGet(vi).then(rec=>{
+    if(!rec) return;
+    if(mineAudio){ mineAudio.pause(); if(mineUrl) URL.revokeObjectURL(mineUrl); }
+    mineUrl=URL.createObjectURL(rec.blob);
+    mineAudio=new Audio(mineUrl); mineAudio.playbackRate=speed;
+    mineAudio.play().catch(()=>{});
+  });
+}
+
+function deleteUserRec(vi){
+  if(!confirm("למחוק את ההקלטה שלך לפסוק "+VERSES[vi].ref+"?")) return;
+  recDel(vi).then(()=>{ recorded.delete(vi); renderRecBar(vi); });
+}
+
+function initRecordings(){
+  const ok = ("indexedDB" in window) && navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
+  recKeys().then(keys=>{ keys.forEach(k=>recorded.add(k)); }).catch(()=>{}).then(()=>{
+    VERSES.forEach((v,vi)=>renderRecBar(vi));
+  });
+  if(!ok){ /* still render bars; startUserRec will alert on failure */ }
+}
+
 /* ---------- init ---------- */
 buildVerses();
+initRecordings();
 updateWarn();
 refreshEditor();
 audio.addEventListener("pause", ()=>{ /* keep */ });

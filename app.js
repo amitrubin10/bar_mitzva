@@ -206,8 +206,18 @@ function startAllVerse(vi){
 function nextInAll(){
   let n=allIdx+1;
   while(n<VERSES.length && !timingFor(n)) n++;
-  if(n>=VERSES.length){ stopAll(); return; }
+  if(n>=VERSES.length){ stopAll(); celebrate(); return; }
   allIdx=n; startAllVerse(n);
+}
+function celebrate(){
+  const light = (document.documentElement.getAttribute("data-theme")==="light");
+  const img = light ? "img/hero-light.png" : "img/hero-dark.png";
+  uiModal({
+    message:'<img src="'+img+'" alt="תורה אורי" style="height:118px;width:auto;display:block;margin:0 auto 12px">'+
+            '<div style="font-weight:800;font-size:1.2rem;margin-bottom:4px">כל הכבוד, אורי! 🎉</div>'+
+            '<div>סיימת מעבר על כל הקטע — אשריך!</div>',
+    okText:"תודה!", cancelText:null
+  });
 }
 
 /* ---------- short (first 2 verses) recording ---------- */
@@ -843,6 +853,14 @@ buildVerses();
 applyNikud();
 applyThemeIcon();
 initRecordings();
+
+/* dismiss splash once the app is ready */
+(function(){
+  const splash=document.getElementById("splash");
+  if(!splash) return;
+  setTimeout(function(){ splash.classList.add("hide");
+    setTimeout(function(){ if(splash.parentNode) splash.remove(); }, 600); }, 950);
+})();
 updateWarn();
 refreshEditor();
 audio.addEventListener("pause", ()=>{ /* keep */ });

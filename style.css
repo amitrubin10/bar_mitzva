@@ -60,10 +60,32 @@ body{
   padding:calc(18px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) 90px calc(16px + env(safe-area-inset-left))}
 
 /* header */
-header.top{text-align:center;padding:22px 10px 8px}
+header.top{text-align:center;padding:18px 10px 8px}
 header.top .kicker{color:var(--accent);letter-spacing:.14em;font-size:.82rem;font-weight:700}
 header.top h1{margin:.25em 0 .1em;font-size:1.6rem;font-weight:800}
-header.top .sub{color:var(--muted);font-size:1rem}
+header.top .sub{color:var(--muted);font-size:1rem;margin-top:2px}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* logo / hero */
+.hero-wrap{display:flex;justify-content:center;margin:4px 0 2px}
+.hero-img{height:158px;width:auto;max-width:84%;object-fit:contain;animation:heroIn .6s ease both}
+.hero-dark{filter:drop-shadow(0 8px 22px rgba(0,0,0,.45))}
+.hero-light{filter:drop-shadow(0 8px 18px rgba(60,50,20,.18))}
+@keyframes heroIn{from{transform:translateY(-10px) scale(.96)}to{transform:none}}
+/* theme-aware show/hide (used by header + splash) */
+.hero-dark{display:block}
+.hero-light{display:none}
+:root[data-theme="light"] .hero-dark{display:none}
+:root[data-theme="light"] .hero-light{display:block}
+@media(max-width:560px){ .hero-img{height:132px} }
+
+/* splash */
+.splash{position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;
+  background:var(--bg-grad);transition:opacity .5s ease}
+.splash.hide{opacity:0;pointer-events:none}
+.splash-logo{height:210px;width:auto;max-width:80%;animation:splashPulse 1.5s ease-in-out infinite alternate}
+@keyframes splashPulse{from{transform:scale(.99)}to{transform:scale(1.03)}}
+@media(max-width:560px){ .splash-logo{height:170px} }
 .ref-badge{display:inline-block;margin-top:8px;background:var(--card);border:1px solid var(--line);
   border-radius:999px;padding:5px 14px;color:var(--muted);font-size:.9rem}
 

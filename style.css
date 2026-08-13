@@ -236,7 +236,11 @@ footer{text-align:center;color:var(--muted);font-size:.8rem;margin-top:30px}
   border:1px solid var(--line);border-radius:14px;padding:10px 16px;display:none;align-items:center;gap:14px;
   box-shadow:0 10px 40px rgba(0,0,0,.5);backdrop-filter:blur(6px);z-index:50}
 .nowbar.show{display:flex}
-.nowbar .stop{cursor:pointer;color:#ff6b6b;font-weight:700}
-.nowbar .pausebtn{cursor:pointer;color:var(--accent);font-weight:700;user-select:none;min-width:74px;text-align:center}
+.nowbar .stop,.nowbar .pausebtn{cursor:pointer;user-select:none;font-weight:700;
+  padding:5px 13px;border-radius:999px;border:1px solid;transition:.15s;line-height:1.5}
+.nowbar .stop{color:#ff6b6b;border-color:rgba(255,107,107,.45)}
+.nowbar .stop:hover{border-color:#ff6b6b;background:rgba(255,107,107,.12)}
+.nowbar .pausebtn{color:var(--accent);border-color:rgba(244,196,48,.45);min-width:82px;text-align:center}
+.nowbar .pausebtn:hover{border-color:var(--accent);background:rgba(244,196,48,.12)}
 .nowbar .np{font-size:.9rem;color:var(--muted)}
 .nowbar .np b{color:var(--accent)}

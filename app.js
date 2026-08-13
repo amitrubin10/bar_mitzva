@@ -141,6 +141,10 @@ if(nowPause){
     if(audio.paused) resumePlayback(); else pausePlayback();
   });
 }
+const nowRestart=document.getElementById("nowRestart");
+if(nowRestart){
+  nowRestart.addEventListener("click", ()=>{ if(active!=null) playVerse(active); });  // replay current verse from its start
+}
 
 function playVerse(vi, fromWord){
   const t = timingFor(vi);

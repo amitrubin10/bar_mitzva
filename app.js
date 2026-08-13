@@ -778,7 +778,7 @@ function drawPitch(cv, orig, origPv, user, userPv){
   const pad=8, H=h-pad*2, mid=pad+H/2, LIM=9; // ±9 semitones
   const y=s=>mid - Math.max(-LIM,Math.min(LIM,s))/LIM*(H/2);
   // zero line (median)
-  g.strokeStyle='rgba(255,255,255,0.12)'; g.lineWidth=1; g.beginPath(); g.moveTo(0,mid); g.lineTo(w,mid); g.stroke();
+  g.strokeStyle=(getComputedStyle(document.documentElement).getPropertyValue('--grid').trim()||'rgba(128,128,128,.25)'); g.lineWidth=1; g.beginPath(); g.moveTo(0,mid); g.lineTo(w,mid); g.stroke();
   function line(vals,pv,color){
     g.strokeStyle=color; g.lineWidth=2.2; g.beginPath(); let pen=false;
     for(let i=0;i<vals.length;i++){
@@ -800,8 +800,48 @@ function initRecordings(){
   if(!ok){ /* still render bars; startUserRec will alert on failure */ }
 }
 
+/* ---------- nikud toggle (reading level) ---------- */
+function stripNikud(s){
+  let o="";
+  for(let i=0;i<s.length;i++){ const c=s.charCodeAt(i);
+    if(c>=0x0591 && c<=0x05BD) continue;                                   // cantillation + most points
+    if(c===0x05BF||c===0x05C1||c===0x05C2||c===0x05C4||c===0x05C5||c===0x05C7) continue; // rafe, shin/sin dots, upper/lower dot, qamats qatan
+    o+=s[i];                                                               // keep letters, maqaf(05BE), sof-pasuq(05C3)
+  }
+  return o;
+}
+let nikudOn = (localStorage.getItem("ori_nikud")!=="0");
+const nikudBtn=document.getElementById("nikudToggle");
+function applyNikud(){
+  versesEl.querySelectorAll(".verse").forEach(function(row){
+    const vi=parseInt(row.dataset.vi,10);
+    row.querySelectorAll(".text .w").forEach(function(sp){
+      const wi=parseInt(sp.dataset.wi,10); const full=VERSES[vi].words[wi].t;
+      sp.textContent = nikudOn ? full : stripNikud(full);
+    });
+  });
+  if(nikudBtn) nikudBtn.textContent = nikudOn ? "אָ הצג ללא ניקוד" : "אַ הצג עם ניקוד";
+}
+if(nikudBtn) nikudBtn.addEventListener("click", function(){ nikudOn=!nikudOn; localStorage.setItem("ori_nikud", nikudOn?"1":"0"); applyNikud(); });
+
+/* ---------- light / dark theme ---------- */
+const themeBtn=document.getElementById("themeToggle");
+function curTheme(){ return document.documentElement.getAttribute("data-theme")==="light" ? "light":"dark"; }
+function applyThemeIcon(){
+  if(themeBtn) themeBtn.textContent = curTheme()==="light" ? "☀️" : "🌙";
+  const m=document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute("content", curTheme()==="light" ? "#f4efe1" : "#0f1020");
+}
+if(themeBtn) themeBtn.addEventListener("click", function(){
+  const light = curTheme()!=="light";
+  document.documentElement.setAttribute("data-theme", light?"light":"dark");
+  localStorage.setItem("ori_theme", light?"light":"dark");
+  applyThemeIcon();
+});
+
 /* ---------- init ---------- */
 buildVerses();
+applyNikud();
+applyThemeIcon();
 initRecordings();
 updateWarn();
 refreshEditor();

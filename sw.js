@@ -1,5 +1,5 @@
 /* Service worker — offline app shell + media caching */
-const CACHE = "ori-bar-mitzva-v18";
+const CACHE = "ori-bar-mitzva-v19";
 const ASSETS = [
   "./",
   "./index.html",
@@ -41,10 +41,14 @@ self.addEventListener("fetch", (e) => {
   const url = new URL(req.url);
   const sameOrigin = url.origin === self.location.origin;
 
-  // App shell (navigations + HTML/JS/CSS/manifest): NETWORK-FIRST so updates
-  // show immediately when online; fall back to cache when offline.
+  // App shell (navigations + HTML/JS/CSS/manifest) and UI images (logo/splash/
+  // icons/share — anything NOT under /media/): NETWORK-FIRST so updates show
+  // immediately when online; fall back to cache when offline. This avoids the
+  // brief "old logo then new logo" flash on returning visits.
+  const isUIimg = /\.(?:png|jpe?g|webp|svg|gif)$/.test(url.pathname) &&
+    !url.pathname.includes("/media/");
   const isShell = req.mode === "navigate" ||
-    /\.(?:html|js|css|webmanifest)$/.test(url.pathname);
+    /\.(?:html|js|css|webmanifest)$/.test(url.pathname) || isUIimg;
 
   if (sameOrigin && isShell) {
     e.respondWith(

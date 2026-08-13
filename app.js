@@ -123,7 +123,7 @@ function resumePlayback(){
   if(active==null) return;
   audio2.pause();
   audio.playbackRate = speed;
-  audio.play();
+  audio.play().catch(()=>{});
   tick();
   refreshTransport();
 }
@@ -160,7 +160,7 @@ function playVerse(vi, fromWord){
   npNum.textContent = VERSES[vi].ref; nowbar.classList.add("show");
   audio.playbackRate = speed;
   audio.currentTime = startT;
-  audio.play();
+  audio.play().catch(()=>{});
   tick();
   refreshTransport();
 }
@@ -204,7 +204,7 @@ function startAllVerse(vi){
   const row=versesEl.querySelector('.verse[data-vi="'+vi+'"]');
   if(row){ row.classList.add("active"); row.scrollIntoView({behavior:"smooth",block:"center"}); }
   npNum.textContent=VERSES[vi].ref; nowbar.classList.add("show");
-  audio.playbackRate=speed; audio.currentTime=t.start; audio.play(); tick();
+  audio.playbackRate=speed; audio.currentTime=t.start; audio.play().catch(()=>{}); tick();
   refreshTransport();
 }
 function nextInAll(){
@@ -228,7 +228,7 @@ function celebrate(){
 const playFirst2Btn=document.getElementById("playFirst2");
 playFirst2Btn.addEventListener("click", ()=>{
   if(!audio2.paused){ audio2.pause(); audio2.currentTime=0; playFirst2Btn.classList.remove("on"); return; }
-  stopAll(); audio2.playbackRate=speed; audio2.currentTime=0; audio2.play();
+  stopAll(); audio2.playbackRate=speed; audio2.currentTime=0; audio2.play().catch(()=>{});
   playFirst2Btn.classList.add("on");
 });
 audio2.addEventListener("ended", ()=>playFirst2Btn.classList.remove("on"));
@@ -306,7 +306,7 @@ function startRecord(){
   // play from a bit before current known start, or from 0
   const t=timingFor(recVi);
   const from = t? Math.max(0, t.start-0.3) : promptStart();
-  audio2.pause(); audio.playbackRate = 1; audio.currentTime=from; audio.play();
+  audio2.pause(); audio.playbackRate = 1; audio.currentTime=from; audio.play().catch(()=>{});
   // highlight active verse
   clearHL();
   const row=versesEl.querySelector('.verse[data-vi="'+recVi+'"]'); if(row) row.classList.add("active");

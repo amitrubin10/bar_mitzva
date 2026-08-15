@@ -864,6 +864,10 @@ function applyDisplay(){
   if(tb) tb.textContent = taamimOn ? "טעמים: מוצגים" : "טעמים: מוסתרים";
   // level 4 = reading/exam view: if leaving mid-record, stop; hide is via CSS
   if(level===4 && recordingVi!=null) stopUserRec();
+  const l4=document.getElementById("level4bar");
+  if(l4) l4.style.display=(level===4)?"flex":"none";
+  if(level===4){ renderLevel4Bar(); }
+  else { const l4r=document.getElementById("level4result"); if(l4r) l4r.style.display="none"; clearFullColors(); }
 }
 const levelGroupEl=document.getElementById("levelGroup");
 if(levelGroupEl) levelGroupEl.addEventListener("click", function(e){
@@ -890,6 +894,125 @@ if(themeBtn) themeBtn.addEventListener("click", function(){
   localStorage.setItem(K_THEME, light?"light":"dark");
   applyThemeIcon();
 });
+
+/* ================= level 4: record & compare the WHOLE passage ================= */
+let fullRec=false, fullMR=null, fullChunks=[], fullStream=null, fullTimer=null, fullT0=0;
+let fullMine=null, fullMineUrl=null;
+
+function buildFullRef(){
+  const verses=ORIG_ENV.verses, hop=ORIG_ENV.hop;
+  const fe=[], fp=[], fv=[], words=[]; let off=0, haveP=true;
+  for(let vi=0; vi<verses.length; vi++){
+    const v=verses[vi];
+    for(let k=0;k<v.fe.length;k++){ fe.push(v.fe[k]); fp.push(v.fp?v.fp[k]:0); fv.push(v.fv?v.fv[k]:0); }
+    if(!v.fp) haveP=false;
+    for(let wi=0; wi<v.words.length; wi++){
+      words.push({vi:vi, wi:wi, oj0:off+Math.max(0,Math.floor(v.words[wi][0]/hop)), oj1:off+Math.floor(v.words[wi][1]/hop)});
+    }
+    off+=v.fe.length;
+  }
+  return {fe:fe, fp:haveP?fp:null, fv:fv, hop:hop, words:words};
+}
+function renderLevel4Bar(){
+  const bar=document.getElementById("level4bar"); if(!bar) return;
+  if(fullRec){
+    bar.innerHTML="";
+    bar.appendChild(mkBtn("⏹ עצור הקלטה","rec-stop",function(){ stopFullRec(); }));
+    const t=document.createElement("span"); t.className="rec-timer"; t.id="fulltimer"; t.textContent="● 0:00"; bar.appendChild(t);
+    return;
+  }
+  recGet("full").then(function(rec){
+    if(level!==4) return;
+    bar.innerHTML="";
+    bar.appendChild(mkBtn(rec?"🎤 הקליטו שוב את כל הקטע":"🎤 הקליטו את כל הקטע","rec-btn",function(){ startFullRec(); }));
+    if(rec){
+      bar.appendChild(mkBtn("▶ ההקלטה שלי","mine-btn",function(){ playFullMine(); }));
+      bar.appendChild(mkBtn("🔍 השוואה למקור","cmp-btn",function(){ compareFull(); }));
+      bar.appendChild(mkBtn("🗑 מחק","del-btn",function(){ deleteFullRec(); }));
+    }
+  });
+}
+function startFullRec(){
+  stopAll(); if(fullMine) fullMine.pause(); clearFullColors();
+  const l4r=document.getElementById("level4result"); if(l4r) l4r.style.display="none";
+  navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
+    fullStream=stream; fullChunks=[];
+    const mime=pickMime();
+    try{ fullMR=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream); }catch(e){ fullMR=new MediaRecorder(stream); }
+    fullMR.ondataavailable=function(ev){ if(ev.data&&ev.data.size) fullChunks.push(ev.data); };
+    fullMR.onstop=function(){
+      const blob=new Blob(fullChunks,{type:(fullMR&&fullMR.mimeType)||"audio/webm"});
+      if(fullStream) fullStream.getTracks().forEach(function(t){t.stop();});
+      const done=function(){ fullRec=false; fullStream=null; fullMR=null; if(fullTimer){clearInterval(fullTimer);fullTimer=null;} renderLevel4Bar(); };
+      if(blob.size>0) recPut("full",{blob:blob,mime:blob.type,createdAt:1}).then(done).catch(done); else done();
+    };
+    fullRec=true; fullMR.start(1000); fullT0=performance.now();
+    fullTimer=setInterval(function(){ const el=document.getElementById("fulltimer"); if(el) el.textContent="● "+fmtDur((performance.now()-fullT0)/1000); },200);
+    renderLevel4Bar();
+  }).catch(function(){ uiAlert("לא ניתן לגשת למיקרופון. יש לאשר הרשאת מיקרופון ולנסות שוב.",{icon:"🎤",title:"נדרשת הרשאת מיקרופון"}); });
+}
+function stopFullRec(){ if(fullMR && fullMR.state!=="inactive") fullMR.stop(); }
+function playFullMine(){
+  stopAll();
+  recGet("full").then(function(rec){ if(!rec) return;
+    if(fullMine){ fullMine.pause(); if(fullMineUrl) URL.revokeObjectURL(fullMineUrl); }
+    fullMineUrl=URL.createObjectURL(rec.blob); fullMine=new Audio(fullMineUrl); fullMine.playbackRate=speed; fullMine.play().catch(function(){});
+  });
+}
+function deleteFullRec(){
+  uiConfirm("למחוק את ההקלטה של כל הקטע?",{icon:"🗑",okText:"מחק",cancelText:"ביטול",danger:true}).then(function(ok){
+    if(!ok) return;
+    recDel("full").then(function(){ clearFullColors(); const l4r=document.getElementById("level4result"); if(l4r) l4r.style.display="none"; renderLevel4Bar(); });
+  });
+}
+function clearFullColors(){
+  versesEl.querySelectorAll(".text .w.wgood,.text .w.wok,.text .w.woff").forEach(function(e){ e.classList.remove("wgood","wok","woff"); });
+}
+function colorFull(scores){
+  clearFullColors();
+  scores.forEach(function(s){
+    const row=versesEl.querySelector('.verse[data-vi="'+s.vi+'"]'); if(!row) return;
+    const sp=row.querySelectorAll(".text .w")[s.wi]; if(!sp) return;
+    sp.classList.add(s.score>=75?"wgood":(s.score>=50?"wok":"woff"));
+  });
+}
+function compareFull(){
+  const l4r=document.getElementById("level4result"); if(!l4r) return;
+  l4r.style.display="block"; l4r.innerHTML='<div class="cmp-loading">מנתח את ההקלטה ומיישר למקור… (עשוי לקחת כמה שניות)</div>';
+  recGet("full").then(function(rec){
+    if(!rec){ l4r.style.display="none"; return; }
+    const Ctx=window.AudioContext||window.webkitAudioContext; const ctx=new Ctx();
+    rec.blob.arrayBuffer().then(function(ab){ return new Promise(function(res,rej){ const p=ctx.decodeAudioData(ab,res,rej); if(p&&p.then)p.then(res,rej); }); })
+      .then(function(buf){ try{ctx.close();}catch(e){}
+        setTimeout(function(){
+          const userF=computeUserFrames(buf);
+          const ref=buildFullRef();
+          if(!userF){ l4r.innerHTML='<div class="cmp-loading">לא הצלחתי לנתח את ההקלטה.</div>'; return; }
+          const path=dtwPath(userF, ref);
+          const o2u=[]; for(let j=0;j<ref.fe.length;j++) o2u.push([]);
+          for(let i=0;i<path.length;i++){ o2u[path[i][1]].push(path[i][0]); }
+          const scores=ref.words.map(function(w){
+            let sum=0,cnt=0,eSum=0,eCnt=0;
+            for(let oj=w.oj0;oj<=w.oj1 && oj<ref.fe.length;oj++){
+              const us=o2u[oj];
+              for(let z=0;z<us.length;z++){ const ui=us[z]; eSum+=userF.fe[ui]; eCnt++;
+                if(ref.fp && userF.fp && ref.fv[oj] && userF.fv[ui]){ sum+=Math.abs(userF.fp[ui]-ref.fp[oj]); cnt++; } }
+            }
+            const avgE=eCnt?eSum/eCnt:0; let sc;
+            if(avgE<0.06) sc=0; else if(cnt>=2){ const dev=sum/cnt; sc=Math.max(0,Math.min(100,Math.round(100-(dev-1)*18))); } else sc=60;
+            return {vi:w.vi, wi:w.wi, score:sc};
+          });
+          colorFull(scores);
+          const overall=Math.round(scores.reduce(function(a,s){return a+s.score;},0)/scores.length);
+          const oc=overall>=75?"good":(overall>=50?"":"warn");
+          l4r.innerHTML='<div class="cmp-head">🔍 השוואת כל הקטע <span class="cmp-x" title="סגור">✕</span></div>'+
+            '<div class="cmp-rows"><div class="cmp-row"><span>דיוק כולל:</span> <b class="'+oc+'">'+overall+'%</b></div>'+
+            '<div class="cmp-row"><span class="cmp-sub">המילים צבועות על הקטע: <b class="wg">ירוק</b>=מדויק · <b class="wo">צהוב</b>=כמעט · <b class="wb">אדום</b>=לתרגל</span></div></div>';
+          l4r.querySelector(".cmp-x").addEventListener("click",function(){ l4r.style.display="none"; clearFullColors(); });
+        },30);
+      }).catch(function(){ l4r.innerHTML='<div class="cmp-loading">לא ניתן לנתח את ההקלטה בדפדפן זה.</div>'; });
+  });
+}
 
 /* ---------- init ---------- */
 initStudent();

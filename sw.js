@@ -1,20 +1,20 @@
 /* Service worker — offline app shell + media caching */
-const CACHE = "ori-bar-mitzva-v19";
+const CACHE = "ori-bar-mitzva-v20";
 const ASSETS = [
   "./",
   "./index.html",
-  "./style.css",
-  "./data.js",
+  "./student.js",
+  "./data.js?v=cant",
   "./timings.js",
   "./original_env.js",
-  "./app.js",
+  "./app/app.js",
+  "./app/style.css",
+  "./app/fonts/StamAshkenazCLM.ttf",
   "./manifest.webmanifest",
   "./share4.png",
   "./img/hero-dark.png",
   "./img/hero-light.png",
   "./media/full.oga",
-  "./media/first2.oga",
-  "./media/text.png",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",

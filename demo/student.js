@@ -5,8 +5,6 @@ window.STUDENT = {
   subtitle: "בדיקת מנוע · פרשת ויצא · עלייה רביעית",
   ref: "ספר בראשית · פרק ל׳, פסוקים י״ד–כ״ז",
   media: {
-    full:  "../media/full.oga",                 // shared brand/demo reuses root media
-    short: "../media/first2.oga",
-    image: "../media/text.png"
+    full:  "../media/full.oga"                   // demo reuses root media
   }
 };

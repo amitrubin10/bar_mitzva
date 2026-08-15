@@ -15,7 +15,6 @@ const K_LEVEL  = SID + "_level";
 const K_TAAMIM = SID + "_taamim";
 
 const audio = document.getElementById("audioFull");
-const audio2 = document.getElementById("audioFirst2");
 let speed = 1;
 
 /* fill per-student bits into the shared shell */
@@ -23,8 +22,6 @@ function initStudent(){
   try{
     if(STUDENT.media){
       if(STUDENT.media.full)  audio.src  = STUDENT.media.full;
-      if(STUDENT.media.short) audio2.src = STUDENT.media.short;
-      const im=document.getElementById("textImg"); if(im && STUDENT.media.image) im.src=STUDENT.media.image;
     }
     const sub=document.getElementById("studentSub"); if(sub && STUDENT.subtitle) sub.textContent=STUDENT.subtitle;
     const rf=document.getElementById("studentRef"); if(rf && STUDENT.ref) rf.textContent=STUDENT.ref;
@@ -144,7 +141,6 @@ function pausePlayback(){
 }
 function resumePlayback(){
   if(active==null) return;
-  audio2.pause();
   audio.playbackRate = speed;
   audio.play().catch(()=>{});
   tick();
@@ -172,7 +168,6 @@ if(nowRestart){
 function playVerse(vi, fromWord){
   const t = timingFor(vi);
   if(!t){ flashNoTiming(vi); return; }
-  audio2.pause();
   if(raf) cancelAnimationFrame(raf);
   clearHL();
   active = vi; playingAll = false;
@@ -215,7 +210,7 @@ let allIdx=0;
 function playAll(){
   const first = firstWithTiming();
   if (first<0){ flashNoTiming(0); return; }
-  audio2.pause(); playingAll=true; allIdx=first; startAllVerse(first);
+  playingAll=true; allIdx=first; startAllVerse(first);
 }
 function firstWithTiming(){ for(let i=0;i<VERSES.length;i++) if(timingFor(i)) return i; return -1; }
 function startAllVerse(vi){
@@ -249,14 +244,6 @@ function celebrate(){
   });
 }
 
-/* ---------- short (first 2 verses) recording ---------- */
-const playFirst2Btn=document.getElementById("playFirst2");
-playFirst2Btn.addEventListener("click", ()=>{
-  if(!audio2.paused){ audio2.pause(); audio2.currentTime=0; playFirst2Btn.classList.remove("on"); return; }
-  stopAll(); audio2.playbackRate=speed; audio2.currentTime=0; audio2.play().catch(()=>{});
-  playFirst2Btn.classList.add("on");
-});
-audio2.addEventListener("ended", ()=>playFirst2Btn.classList.remove("on"));
 
 /* ---------- controls ---------- */
 document.getElementById("playAll").addEventListener("click", playAll);
@@ -264,7 +251,7 @@ document.getElementById("speedGroup").addEventListener("click", e=>{
   const b=e.target.closest("button"); if(!b) return;
   speed=parseFloat(b.dataset.sp);
   [...e.currentTarget.children].forEach(c=>c.classList.toggle("on",c===b));
-  audio.playbackRate=speed; audio2.playbackRate=speed;
+  audio.playbackRate=speed;
 });
 
 let noTimingTimer=null;
@@ -331,7 +318,7 @@ function startRecord(){
   // play from a bit before current known start, or from 0
   const t=timingFor(recVi);
   const from = t? Math.max(0, t.start-0.3) : promptStart();
-  audio2.pause(); audio.playbackRate = 1; audio.currentTime=from; audio.play().catch(()=>{});
+  audio.playbackRate = 1; audio.currentTime=from; audio.play().catch(()=>{});
   // highlight active verse
   clearHL();
   const row=versesEl.querySelector('.verse[data-vi="'+recVi+'"]'); if(row) row.classList.add("active");

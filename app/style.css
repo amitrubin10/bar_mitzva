@@ -259,7 +259,8 @@ footer{text-align:center;color:var(--muted);font-size:.8rem;margin-top:30px}
   line-height:2.05;
 }
 /* level 4: continuous scroll, reading/exam mode (no verse chrome, no per-verse tools) */
-.verses[data-level="4"]{display:block;text-align:justify}
+.verses[data-level="4"]{display:block;text-align:justify;
+  background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px 22px}
 .verses[data-level="4"] .verse{display:inline;background:transparent;border:0;box-shadow:none;padding:0;margin:0}
 .verses[data-level="4"] .verse.active{box-shadow:none}
 .verses[data-level="4"] .verse .play,

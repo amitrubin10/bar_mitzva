@@ -244,3 +244,34 @@ footer{text-align:center;color:var(--muted);font-size:.8rem;margin-top:30px}
 .nowbar .pausebtn:hover{border-color:var(--accent);background:rgba(244,196,48,.12)}
 .nowbar .np{font-size:.9rem;color:var(--muted)}
 .nowbar .np b{color:var(--accent)}
+
+/* ===== reading levels: fonts + continuous (scroll) mode ===== */
+@font-face{
+  font-family:"StamAshkenaz";
+  src:url('fonts/StamAshkenazCLM.ttf') format('truetype');
+  font-display:swap;
+}
+/* levels 2-4: STA"M stack — "Guttman Stam" on machines that have it, else the free StamAshkenaz */
+.verses[data-level="2"] .text,
+.verses[data-level="3"] .text,
+.verses[data-level="4"] .text{
+  font-family:"Guttman Stam","StamAshkenaz","Frank Ruhl Libre",serif;
+  line-height:2.05;
+}
+/* level 4: continuous scroll, reading/exam mode (no verse chrome, no per-verse tools) */
+.verses[data-level="4"]{display:block;text-align:justify}
+.verses[data-level="4"] .verse{display:inline;background:transparent;border:0;box-shadow:none;padding:0;margin:0}
+.verses[data-level="4"] .verse.active{box-shadow:none}
+.verses[data-level="4"] .verse .play,
+.verses[data-level="4"] .verse .num,
+.verses[data-level="4"] .recbar,
+.verses[data-level="4"] .cmp-result{display:none}
+.verses[data-level="4"] .vbody{display:inline}
+.verses[data-level="4"] .text{display:inline;font-size:1.55rem;line-height:2.25}
+
+/* level selector buttons */
+.level-group{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.level-group button{background:transparent;border:0;border-inline-start:1px solid var(--line);color:var(--muted);
+  padding:9px 13px;cursor:pointer;font-weight:700;font-size:.9rem;font-family:inherit}
+.level-group button:first-child{border-inline-start:0}
+.level-group button.on{background:var(--accent2);color:#fff}

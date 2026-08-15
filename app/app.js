@@ -11,6 +11,8 @@ const LS_KEY  = LEGACY ? "ori_timings_v1" : SID + "_timings_v1";
 const K_NIKUD = LEGACY ? "ori_nikud"      : SID + "_nikud";
 const K_THEME = LEGACY ? "ori_theme"      : SID + "_theme";
 const DB_NAME = LEGACY ? "toraOr"         : "toraOr_" + SID;
+const K_LEVEL  = SID + "_level";
+const K_TAAMIM = SID + "_taamim";
 
 const audio = document.getElementById("audioFull");
 const audio2 = document.getElementById("audioFirst2");
@@ -242,7 +244,7 @@ function celebrate(){
   uiModal({
     message:(img?'<img src="'+img+'" alt="תורה אורי" style="height:118px;width:auto;display:block;margin:0 auto 12px">':'')+
             '<div style="font-weight:800;font-size:1.2rem;margin-bottom:4px">כל הכבוד'+(nm?", "+nm:"")+'! 🎉</div>'+
-            '<div>סיימת מעבר על כל הקטע — אשריך!</div>',
+            '<div>סיימת מעבר על כל הקטע ב'+levelName()+' — אשריך!</div>',
     okText:"תודה!", cancelText:null
   });
 }
@@ -837,29 +839,56 @@ function initRecordings(){
   if(!ok){ /* still render bars; startUserRec will alert on failure */ }
 }
 
-/* ---------- nikud toggle (reading level) ---------- */
-function stripNikud(s){
-  let o="";
-  for(let i=0;i<s.length;i++){ const c=s.charCodeAt(i);
-    if(c>=0x0591 && c<=0x05BD) continue;                                   // cantillation + most points
-    if(c===0x05BF||c===0x05C1||c===0x05C2||c===0x05C4||c===0x05C5||c===0x05C7) continue; // rafe, shin/sin dots, upper/lower dot, qamats qatan
-    o+=s[i];                                                               // keep letters, maqaf(05BE), sof-pasuq(05C3)
-  }
-  return o;
+/* ---------- reading levels + taamim (cantillation) ---------- */
+function stripTaamim(s){ return s.replace(/[\u0591-\u05AF\u05BD]/g,""); }              // cantillation + meteg
+function stripNikud(s){ return s.replace(/[\u05B0-\u05BC\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7]/g,""); }  // vowels + dagesh/dots
+function stripSofPasuq(s){ return s.replace(/\u05C3/g,""); }                                 // sof-pasuq
+
+// 1: regular font + nikud ; 2: STA"M + nikud ; 3: STA"M no-nikud ; 4: STA"M continuous (scroll)
+const LEVELS = {
+  1:{font:"regular", nikud:true,  sep:true },
+  2:{font:"stam",    nikud:true,  sep:true },
+  3:{font:"stam",    nikud:false, sep:true },
+  4:{font:"stam",    nikud:false, sep:false}
+};
+let level = parseInt(localStorage.getItem(K_LEVEL)||"1",10); if(!LEVELS[level]) level=1;
+let taamimOn = (localStorage.getItem(K_TAAMIM)!=="0");   // default: taamim shown
+
+function wordDisplay(full, lv){
+  let s = full;
+  if(!taamimOn)  s = stripTaamim(s);
+  if(!lv.nikud)  s = stripNikud(s);
+  if(!lv.sep)    s = stripSofPasuq(s);
+  return s;
 }
-let nikudOn = (localStorage.getItem(K_NIKUD)!=="0");
-const nikudBtn=document.getElementById("nikudToggle");
-function applyNikud(){
+function applyDisplay(){
+  const lv = LEVELS[level] || LEVELS[1];
+  versesEl.setAttribute("data-level", String(level));
   versesEl.querySelectorAll(".verse").forEach(function(row){
     const vi=parseInt(row.dataset.vi,10);
     row.querySelectorAll(".text .w").forEach(function(sp){
-      const wi=parseInt(sp.dataset.wi,10); const full=VERSES[vi].words[wi].t;
-      sp.textContent = nikudOn ? full : stripNikud(full);
+      const wi=parseInt(sp.dataset.wi,10);
+      sp.textContent = wordDisplay(VERSES[vi].words[wi].t, lv);
     });
   });
-  if(nikudBtn) nikudBtn.textContent = nikudOn ? "אָ הצג ללא ניקוד" : "אַ הצג עם ניקוד";
+  const lg=document.getElementById("levelGroup");
+  if(lg) [].forEach.call(lg.children, function(b){ b.classList.toggle("on", parseInt(b.dataset.lvl,10)===level); });
+  const tb=document.getElementById("taamimToggle");
+  if(tb) tb.textContent = taamimOn ? "טעמים: מוצגים" : "טעמים: מוסתרים";
+  // level 4 = reading/exam view: if leaving mid-record, stop; hide is via CSS
+  if(level===4 && recordingVi!=null) stopUserRec();
 }
-if(nikudBtn) nikudBtn.addEventListener("click", function(){ nikudOn=!nikudOn; localStorage.setItem(K_NIKUD, nikudOn?"1":"0"); applyNikud(); });
+const levelGroupEl=document.getElementById("levelGroup");
+if(levelGroupEl) levelGroupEl.addEventListener("click", function(e){
+  const b=e.target.closest("button"); if(!b) return;
+  level=parseInt(b.dataset.lvl,10); if(!LEVELS[level]) level=1;
+  localStorage.setItem(K_LEVEL,String(level)); applyDisplay();
+});
+const taamimBtn=document.getElementById("taamimToggle");
+if(taamimBtn) taamimBtn.addEventListener("click", function(){
+  taamimOn=!taamimOn; localStorage.setItem(K_TAAMIM, taamimOn?"1":"0"); applyDisplay();
+});
+function levelName(){ return "רמה "+level; }
 
 /* ---------- light / dark theme ---------- */
 const themeBtn=document.getElementById("themeToggle");
@@ -878,7 +907,7 @@ if(themeBtn) themeBtn.addEventListener("click", function(){
 /* ---------- init ---------- */
 initStudent();
 buildVerses();
-applyNikud();
+applyDisplay();
 applyThemeIcon();
 initRecordings();
 

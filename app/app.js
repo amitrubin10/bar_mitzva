@@ -833,10 +833,10 @@ function stripSofPasuq(s){ return s.replace(/\u05C3/g,""); }                    
 
 // 1: regular font + nikud ; 2: STA"M + nikud ; 3: STA"M no-nikud ; 4: STA"M continuous (scroll)
 const LEVELS = {
-  1:{font:"regular", nikud:true,  sep:true },
-  2:{font:"stam",    nikud:true,  sep:true },
-  3:{font:"stam",    nikud:false, sep:true },
-  4:{font:"stam",    nikud:false, sep:false}
+  1:{font:"regular", nikud:true,  sep:true,  name:"כתב רגיל · עם ניקוד",       icon:"📖"},
+  2:{font:"stam",    nikud:true,  sep:true,  name:"כתב סת\"ם · עם ניקוד",       icon:"📜"},
+  3:{font:"stam",    nikud:false, sep:true,  name:"כתב סת\"ם · בלי ניקוד",      icon:"📜"},
+  4:{font:"stam",    nikud:false, sep:false, name:"רצף — כמו קלף התורה",        icon:"🕎"}
 };
 let level = parseInt(localStorage.getItem(K_LEVEL)||"1",10); if(!LEVELS[level]) level=1;
 let taamimOn = (localStorage.getItem(K_TAAMIM)!=="0");   // default: taamim shown
@@ -859,9 +859,18 @@ function applyDisplay(){
     });
   });
   const lg=document.getElementById("levelGroup");
-  if(lg) [].forEach.call(lg.children, function(b){ b.classList.toggle("on", parseInt(b.dataset.lvl,10)===level); });
+  if(lg) [].forEach.call(lg.children, function(b){
+    const n=parseInt(b.dataset.lvl,10);
+    b.classList.toggle("on", n===level);
+    if(LEVELS[n]) b.title = "רמה "+n+" · "+LEVELS[n].name;   // hover tooltip
+  });
   const tb=document.getElementById("taamimToggle");
   if(tb) tb.textContent = taamimOn ? "טעמים: מוצגים" : "טעמים: מוסתרים";
+  // nice title above the passage showing the current level
+  const lt=document.getElementById("levelTitle");
+  if(lt) lt.innerHTML = (lv.icon?lv.icon+" ":"")+'<b>רמה '+level+'</b> · '+lv.name;
+  // hide the "click ▶ next to each verse" hint in level 4 (no per-verse buttons there)
+  const hint=document.querySelector(".hint"); if(hint) hint.style.display = (level===4)?"none":"";
   // level 4 = reading/exam view: if leaving mid-record, stop; hide is via CSS
   if(level===4 && recordingVi!=null) stopUserRec();
   const l4=document.getElementById("level4bar");

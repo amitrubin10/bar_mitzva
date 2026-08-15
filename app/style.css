@@ -280,3 +280,7 @@ footer{text-align:center;color:var(--muted);font-size:.8rem;margin-top:30px}
 /* level 4: whole-passage record & compare bar */
 .level4bar{display:none;justify-content:center;gap:8px;flex-wrap:wrap;margin:14px auto 0;max-width:940px}
 #level4result{max-width:940px;margin:12px auto 0}
+
+/* current-level title above the passage */
+.level-title{text-align:center;margin:2px 0 14px;font-size:1.05rem;color:var(--ink);font-weight:700}
+.level-title b{color:var(--accent)}

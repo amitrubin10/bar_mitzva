@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>תורה יובל · הקריאה של יובל לבר המצווה</title>
+<meta name="description" content="תורה יובל — לימוד קריאה בתורה בטעמים. לוחצים על כל פסוק ולומדים בדיוק לפי ההקלטה, עם הדגשת המילה הנקראת בזמן אמת.">
+
+<!-- Open Graph / WhatsApp / social preview -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="תורה יובל">
+<meta property="og:title" content="תורה יובל">
+<meta property="og:description" content="לימוד קריאה בתורה בטעמים — פסוק אחר פסוק, בדיוק לפי ההקלטה, עם הדגשת המילה הנקראת בזמן אמת.">
+<meta property="og:locale" content="he_IL">
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0f1020">
+<script>(function(){try{var t=localStorage.getItem('yuval_theme');if(!t){t=(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark';}if(t==='light'){document.documentElement.setAttribute('data-theme','light');}}catch(e){}})();</script>
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="תורה יובל">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<link rel="icon" href="../icons/favicon.png" type="image/png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&family=Frank+Ruhl+Libre:wght@500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../app/style.css">
+</head>
+<body>
+<div class="splash" id="splash" aria-hidden="true">
+  <img class="splash-logo hero-dark" src="../img/hero-dark.png" alt="תורה יובל">
+  <img class="splash-logo hero-light" src="../img/hero-light.png" alt="תורה יובל">
+</div>
+<div class="wrap">
+  <header class="top">
+    <div class="kicker">בס״ד · לכבוד בר המצווה</div>
+    <h1 class="visually-hidden">תורה יובל</h1>
+    <div class="hero-wrap">
+      <img class="hero-img hero-dark" src="../img/hero-dark.png" alt="תורה יובל" width="354" height="404">
+      <img class="hero-img hero-light" src="../img/hero-light.png" alt="תורה יובל" width="470" height="461">
+    </div>
+    <div class="sub" id="studentSub">—</div>
+    <div class="ref-badge" id="studentRef">—</div>
+  </header>
+
+  <div class="toolbar">
+    <div class="btn primary" id="playAll"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="#1a1400" d="M8 5v14l11-7z"/></svg> נגן הכול מההתחלה</div>
+    <div class="speed-group" id="speedGroup" title="מהירות">
+      <button data-sp="0.7">0.7×</button>
+      <button data-sp="0.85">0.85×</button>
+      <button data-sp="1" class="on">1×</button>
+    </div>
+    <div class="level-group" id="levelGroup" title="רמת קריאה">
+      <button data-lvl="1" class="on">רמה 1</button>
+      <button data-lvl="2">רמה 2</button>
+      <button data-lvl="3">רמה 3</button>
+      <button data-lvl="4">רמה 4</button>
+    </div>
+    <div class="btn ghost" id="taamimToggle">טעמים: מוצגים</div>
+    <div class="btn ghost" id="themeToggle" title="מסך בהיר / כהה">🌙</div>
+    <div class="btn ghost" id="syncToggle">⚙️ מצב סנכרון (להורה)</div>
+    <div class="btn" id="installBtn" style="display:none">⬇️ התקן כאפליקציה</div>
+  </div>
+  <div class="hint">לחצו על ▶ שליד כל פסוק כדי לשמוע אותו לבד — המילה הנקראת תודגש בזמן אמת.</div>
+
+  <div id="noSyncWarn" class="warn-nosync" style="display:none"></div>
+
+  <div class="level-title" id="levelTitle"></div>
+  <div class="verses" id="verses"></div>
+  <div id="level4bar" class="level4bar"></div>
+  <div id="level4result" class="cmp-result" style="display:none"></div>
+
+  <!-- ===== Sync editor (parent) ===== -->
+  <div class="editor" id="editor">
+    <h3>⚙️ מצב סנכרון — כוונון זמנים</h3>
+    <p style="color:var(--muted);font-size:.9rem;margin-top:0">
+      כאן מכוונים אילו קטעים בהקלטה שייכים לכל פסוק ולכל מילה, כדי שההדגשה תהיה מדויקת.
+      בוחרים פסוק, לוחצים <b>הקלט תזמון</b>, וההקלטה מתנגנת — מקישים <b>רווח</b> (או לוחצים על הכפתור הגדול)
+      בדיוק ברגע שבו מתחילה כל מילה. בסוף לוחצים שוב רווח לסיום. אפשר גם לתקן ידנית את זמני ההתחלה/סיום של הפסוק.
+    </p>
+    <div class="row">
+      <label>פסוק:</label>
+      <select id="edVerse"></select>
+      <span class="pill">התחלה: <b id="edStart">—</b></span>
+      <span class="pill">סיום: <b id="edEnd">—</b></span>
+    </div>
+    <div class="row">
+      <span>התחלת פסוק (שנ'):</span><input type="number" id="edStartIn" step="0.05" style="width:90px">
+      <span>סיום פסוק (שנ'):</span><input type="number" id="edEndIn" step="0.05" style="width:90px">
+      <div class="btn" id="edApplyBounds">עדכן גבולות</div>
+      <div class="btn" id="edPreview">▶ נגן פסוק זה</div>
+    </div>
+    <div class="row">
+      <div class="btn primary big" id="edRecord">🎯 הקלט תזמון מילים (רווח לכל מילה)</div>
+      <span class="rec-status" id="edRecStatus"></span>
+    </div>
+    <div class="row">
+      <div class="btn on" id="edTapBtn" style="display:none;font-size:1.1rem;padding:14px 28px">👇 הקש כאן / רווח — מילה הבאה</div>
+    </div>
+    <div class="row">
+      <div class="btn" id="edExport">⬇️ ייצוא כל הזמנים (JSON)</div>
+      <div class="btn" id="edImport">⬆️ טעינת זמנים מ-JSON</div>
+      <div class="btn ghost" id="edReset" style="color:#ff8080">איפוס פסוק זה</div>
+    </div>
+    <textarea id="edJson" placeholder="כאן יופיע ה-JSON לייצוא / כאן מדביקים JSON לטעינה"></textarea>
+    <div class="row"><div class="btn" id="edLoadJson">טען מהתיבה למעלה</div>
+      <span style="color:var(--muted);font-size:.82rem">הזמנים נשמרים אוטומטית בדפדפן. לייצוא קבוע — שמרו את ה-JSON.</span></div>
+  </div>
+
+  <footer>נבנה באהבה לכבוד בר המצווה · מזל טוב ליובל 🎉</footer>
+</div>
+
+<div class="nowbar" id="nowbar">
+  <span class="stop" id="nowStop">■ עצור</span>
+  <span class="pausebtn" id="nowRestart">⏮ מהתחלה</span>
+  <span class="pausebtn" id="nowPause">⏸ השהה</span>
+  <span class="np">פסוק <b id="npNum">—</b></span>
+</div>
+
+<audio id="audioFull" preload="auto"></audio>
+
+<script src="student.js"></script>
+<script src="data.js"></script>
+<script src="timings.js"></script>
+<script src="original_env.js"></script>
+<script src="../app/app.js"></script>
+<script>
+  if ("serviceWorker" in navigator) {
+    var __refreshing = false;
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.addEventListener("controllerchange", function () {
+        if (__refreshing) return; __refreshing = true; window.location.reload();
+      });
+    }
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js").then(function (reg) {
+        if (reg && reg.update) { try { reg.update(); } catch (e) {} }
+      }).catch(function () {});
+    });
+  }
+</script>
+</body>
+</html>

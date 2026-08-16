@@ -2,8 +2,8 @@
 window.STUDENT = {
   id: "yuval",                                 // storage namespace: yuval_* keys, IndexedDB "toraOr_yuval"
   name: "יובל",
-  subtitle: "הקריאה של יובל · פרשת בראשית",
-  ref: "ספר בראשית · פרק ד׳, פסוקים י״ט–כ״ו",
+  subtitle: "הקריאה של יובל לבר מצווה",
+  ref: "שבת פרשת בראשית · עלייה חמישית · בראשית ד׳ י״ט–כ״ו",
   media: {
     full: "media/full.oga"
   }

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>בחירת פונט · תורה אורי</title>
+<style>
+  @font-face{font-family:"TaameyAshkenaz";src:url('fonts/TaameyAshkenaz-Medium.ttf') format('truetype');font-display:swap}
+  @font-face{font-family:"KeterAramTsova";src:url('fonts/KeterAramTsova.ttf') format('truetype');font-display:swap}
+  @font-face{font-family:"TaameyDavid";src:url('fonts/TaameyDavidCLM-Medium.ttf') format('truetype');font-display:swap}
+  @font-face{font-family:"KeterYG";src:url('fonts/KeterYG-Medium.ttf') format('truetype');font-display:swap}
+  @font-face{font-family:"Shofar";src:url('fonts/ShofarRegular.ttf') format('truetype');font-display:swap}
+  @font-face{font-family:"TaameyFrankCLM";src:url('fonts/TaameyFrankCLM-Medium.ttf') format('truetype');font-display:swap}
+  :root{--bg:#f4efe1;--card:#fffdf7;--line:#e6dcc4;--ink:#2b2410;--muted:#8a7d5f;--accent:#b8860b}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Segoe UI",system-ui,Arial,sans-serif;padding:16px 12px 60px}
+  h1{font-size:1.25rem;text-align:center;margin:6px 0 2px}
+  .lead{text-align:center;color:var(--muted);font-size:.9rem;margin:0 0 18px;line-height:1.5}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:14px 16px 18px;margin:0 auto 16px;max-width:680px;box-shadow:0 2px 10px rgba(0,0,0,.04)}
+  .tag{display:inline-block;background:var(--accent);color:#fff;font-weight:700;
+    font-size:.8rem;padding:3px 12px;border-radius:20px;margin-bottom:4px}
+  .note{color:var(--muted);font-size:.78rem;margin:2px 0 10px}
+  .sample{font-size:1.7rem;line-height:2.15;text-align:justify;direction:rtl}
+  .num{color:var(--accent);font-size:.7em;margin-left:.2em;font-weight:700}
+</style>
+</head>
+<body>
+<h1>איזה פונט הכי מתאים?</h1>
+<p class="lead">כל הכרטיסים מציגים את אותו פסוק (בראשית ל׳, י״ד) עם ניקוד וטעמים.<br>
+עבור עליהם בטלפון וכתוב לי איזה מספר הכי דומה לכתב סת״ם / קלף התורה.</p>
+
+<div class="card">
+  <span class="tag">1 · Guttman Stam</span>
+  <div class="note">כך זה נראה במחשב שלך (קנייני — לא זמין בטלפון, יראה פונט ברירת מחדל)</div>
+  <div class="sample" style="font-family:'Guttman Stam',serif" id="s1"></div>
+</div>
+<div class="card">
+  <span class="tag">2 · Taamey Ashkenaz</span>
+  <div class="note">כתב אשכנזי מרובע — הכי קרוב לסת״ם מבין החופשיים</div>
+  <div class="sample" style="font-family:'TaameyAshkenaz',serif" id="s2"></div>
+</div>
+<div class="card">
+  <span class="tag">3 · Keter Aram Tsova</span>
+  <div class="note">כתב כתר ארם צובא (כתר ארם צובה — כתב היד המקראי)</div>
+  <div class="sample" style="font-family:'KeterAramTsova',serif" id="s3"></div>
+</div>
+<div class="card">
+  <span class="tag">4 · Taamey David</span>
+  <div class="note">כתב "דוד" — נקי וקריא</div>
+  <div class="sample" style="font-family:'TaameyDavid',serif" id="s4"></div>
+</div>
+<div class="card">
+  <span class="tag">5 · KeterYG (הנוכחי)</span>
+  <div class="note">מה שמותקן עכשיו באתר</div>
+  <div class="sample" style="font-family:'KeterYG',serif" id="s5"></div>
+</div>
+<div class="card">
+  <span class="tag">6 · Shofar</span>
+  <div class="note">כתב מודגש יותר</div>
+  <div class="sample" style="font-family:'Shofar',serif" id="s6"></div>
+</div>
+<div class="card">
+  <span class="tag">7 · Taamey Frank (רמה 1)</span>
+  <div class="note">הכתב ה"רגיל" של רמה 1 — להשוואה</div>
+  <div class="sample" style="font-family:'TaameyFrankCLM',serif" id="s7"></div>
+</div>
+
+<script>
+  var V=[{"t":"וַיֵּ֨לֶךְ"},{"t":"רְאוּבֵ֜ן"},{"t":"בִּימֵ֣י"},{"t":"קְצִיר־חִטִּ֗ים"},{"t":"וַיִּמְצָ֤א"},{"t":"דֽוּדָאִים֙"},{"t":"בַּשָּׂדֶ֔ה"},{"t":"וַיָּבֵ֣א"},{"t":"אֹתָ֔ם"},{"t":"אֶל־לֵאָ֖ה"},{"t":"אִמּ֑וֹ"},{"t":"וַתֹּ֤אמֶר"},{"t":"רָחֵל֙"},{"t":"אֶל־לֵאָ֔ה"},{"t":"תְּנִי־נָ֣א"},{"t":"לִ֔י"},{"t":"מִדּוּדָאֵ֖י"},{"t":"בְּנֵֽךְ׃"}];
+  var html='<span class="num">יד</span> '+V.map(function(w){return w.t;}).join(' ');
+  for(var i=1;i<=7;i++){document.getElementById('s'+i).innerHTML=html;}
+</script>
+</body>
+</html>

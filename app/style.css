@@ -246,14 +246,19 @@ footer{text-align:center;color:var(--muted);font-size:.8rem;margin-top:30px}
 .nowbar .np b{color:var(--accent)}
 
 /* ===== reading levels: fonts + continuous (scroll) mode ===== */
-/* Self-hosted Culmus fonts (GPL + font-exception) that fully render nikud AND
-   ta'amei ha-miqra on every device — the free "StamAshkenaz" was a traditional
-   scribal font (consonants only, no marks) so it dropped all vowels/cantillation
-   on phones that lack Guttman Stam. KeterYG = square biblical (Aleppo-codex)
-   look for the STA"M levels; TaameyFrankCLM = Frank-Ruhl look + marks for level 1. */
+/* Self-hosted fonts (GPL + font-exception) that fully render nikud AND
+   ta'amei ha-miqra identically on every device.
+   "TorahStam" is a CUSTOM font we built: authentic square STA"M scribal
+   consonants (Culmus StamAshkenaz — the real Torah-scroll ktav) with the
+   nikud+taamim outlines grafted in from Culmus Taamey and positioned by the
+   base font's own GPOS anchors. It looks like Guttman Stam but is free and
+   renders the marks everywhere (the plain StamAshkenaz ships those glyphs
+   EMPTY, which is why phones showed consonants only).
+   "TaameyFrankCLM" = Frank-Ruhl look + marks for level 1 (Google's Frank Ruhl
+   Libre has no cantillation glyphs). */
 @font-face{
-  font-family:"KeterYG";
-  src:url('fonts/KeterYG-Medium.ttf') format('truetype');
+  font-family:"TorahStam";
+  src:url('fonts/TorahStamAshkenaz.ttf') format('truetype');
   font-display:swap;
 }
 @font-face{
@@ -261,12 +266,13 @@ footer{text-align:center;color:var(--muted);font-size:.8rem;margin-top:30px}
   src:url('fonts/TaameyFrankCLM-Medium.ttf') format('truetype');
   font-display:swap;
 }
-/* levels 2-4: STA"M / manuscript stack — "Guttman Stam" on machines that have it
-   (the user's PC, matching etnachta.co.il), else self-hosted KeterYG everywhere. */
+/* levels 2-4: STA"M / Torah-scroll stack. TorahStam first so every device
+   (phone, PC, future students) sees the SAME correct rendering; "Guttman Stam"
+   kept only as a safety fallback if TorahStam ever fails to load. */
 .verses[data-level="2"] .text,
 .verses[data-level="3"] .text,
 .verses[data-level="4"] .text{
-  font-family:"Guttman Stam","KeterYG","Frank Ruhl Libre",serif;
+  font-family:"TorahStam","Guttman Stam","Frank Ruhl Libre",serif;
   line-height:2.05;
 }
 /* level 4: continuous scroll, reading/exam mode (no verse chrome, no per-verse tools) */

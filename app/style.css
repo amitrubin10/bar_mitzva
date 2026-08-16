@@ -21,7 +21,7 @@
   --modal-bg:linear-gradient(180deg,#1e2143,#181a35);
   --play-bg:radial-gradient(circle at 30% 30%,#2b2f5c,#1a1d3a);
   --grid:rgba(255,255,255,.12);
-  --font-torah:"Frank Ruhl Libre","Times New Roman",serif;
+  --font-torah:"TaameyFrankCLM","Frank Ruhl Libre","Times New Roman",serif;
 }
 :root[data-theme="light"]{
   --bg:#f4efe1;
@@ -246,16 +246,27 @@ footer{text-align:center;color:var(--muted);font-size:.8rem;margin-top:30px}
 .nowbar .np b{color:var(--accent)}
 
 /* ===== reading levels: fonts + continuous (scroll) mode ===== */
+/* Self-hosted Culmus fonts (GPL + font-exception) that fully render nikud AND
+   ta'amei ha-miqra on every device — the free "StamAshkenaz" was a traditional
+   scribal font (consonants only, no marks) so it dropped all vowels/cantillation
+   on phones that lack Guttman Stam. KeterYG = square biblical (Aleppo-codex)
+   look for the STA"M levels; TaameyFrankCLM = Frank-Ruhl look + marks for level 1. */
 @font-face{
-  font-family:"StamAshkenaz";
-  src:url('fonts/StamAshkenazCLM.ttf') format('truetype');
+  font-family:"KeterYG";
+  src:url('fonts/KeterYG-Medium.ttf') format('truetype');
   font-display:swap;
 }
-/* levels 2-4: STA"M stack — "Guttman Stam" on machines that have it, else the free StamAshkenaz */
+@font-face{
+  font-family:"TaameyFrankCLM";
+  src:url('fonts/TaameyFrankCLM-Medium.ttf') format('truetype');
+  font-display:swap;
+}
+/* levels 2-4: STA"M / manuscript stack — "Guttman Stam" on machines that have it
+   (the user's PC, matching etnachta.co.il), else self-hosted KeterYG everywhere. */
 .verses[data-level="2"] .text,
 .verses[data-level="3"] .text,
 .verses[data-level="4"] .text{
-  font-family:"Guttman Stam","StamAshkenaz","Frank Ruhl Libre",serif;
+  font-family:"Guttman Stam","KeterYG","Frank Ruhl Libre",serif;
   line-height:2.05;
 }
 /* level 4: continuous scroll, reading/exam mode (no verse chrome, no per-verse tools) */

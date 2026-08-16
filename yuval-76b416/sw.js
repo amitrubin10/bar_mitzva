@@ -1,5 +1,5 @@
 /* Service worker — per-student offline shell + media caching (Yuval) */
-const CACHE = "yuval-torah-v3";
+const CACHE = "yuval-torah-v4";
 const ASSETS = [
   "./",
   "./index.html",

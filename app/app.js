@@ -88,7 +88,7 @@ function buildVerses(){
     v.words.forEach((w, wi)=>{
       const s = document.createElement("span");
       s.className = "w"; s.textContent = w.t; s.dataset.vi=vi; s.dataset.wi=wi;
-      s.addEventListener("click", ()=> playVerse(vi, wi));
+      s.addEventListener("click", ()=> onWord(vi, wi));
       text.appendChild(s);
       text.appendChild(document.createTextNode(" "));
     });
@@ -213,7 +213,7 @@ function playAll(){
   playingAll=true; allIdx=first; startAllVerse(first);
 }
 function firstWithTiming(){ for(let i=0;i<VERSES.length;i++) if(timingFor(i)) return i; return -1; }
-function startAllVerse(vi){
+function startAllVerse(vi, fromWord){
   const t=timingFor(vi);
   if(!t){ nextInAll(); return; }
   if(raf) cancelAnimationFrame(raf);
@@ -222,7 +222,8 @@ function startAllVerse(vi){
   const row=versesEl.querySelector('.verse[data-vi="'+vi+'"]');
   if(row){ row.classList.add("active"); row.scrollIntoView({behavior:"smooth",block:"center"}); }
   npNum.textContent=VERSES[vi].ref; nowbar.classList.add("show");
-  audio.playbackRate=speed; audio.currentTime=t.start; audio.play().catch(()=>{}); tick();
+  const startT = (fromWord!=null && t.words[fromWord]) ? t.words[fromWord].s : t.start;
+  audio.playbackRate=speed; audio.currentTime=startT; audio.play().catch(()=>{}); tick();
   refreshTransport();
 }
 function nextInAll(){
@@ -230,6 +231,21 @@ function nextInAll(){
   while(n<VERSES.length && !timingFor(n)) n++;
   if(n>=VERSES.length){ stopAll(); celebrate(); return; }
   allIdx=n; startAllVerse(n);
+}
+// continuous play starting from a specific verse/word (used by level 4: one long reading)
+function playAllFrom(vi, fromWord){
+  if(!timingFor(vi)){
+    let n=vi; while(n<VERSES.length && !timingFor(n)) n++;
+    if(n>=VERSES.length){ flashNoTiming(vi); return; }
+    vi=n; fromWord=null;
+  }
+  playingAll=true; allIdx=vi; startAllVerse(vi, fromWord);
+}
+// clicking a word: level 4 = play the whole passage continuously from here;
+// levels 1-3 = play just that verse.
+function onWord(vi, wi){
+  if(level===4) playAllFrom(vi, wi);
+  else playVerse(vi, wi);
 }
 function celebrate(){
   const light = (document.documentElement.getAttribute("data-theme")==="light");
@@ -933,6 +949,8 @@ function renderLevel4Bar(){
   recGet("full").then(function(rec){
     if(level!==4) return;
     bar.innerHTML="";
+    // play the WHOLE passage continuously (level 4 = one long scroll reading)
+    bar.appendChild(mkBtn("▶ נגן את כל הקטע","play-full-btn",function(){ playAll(); }));
     bar.appendChild(mkBtn(rec?"🎤 הקליטו שוב את כל הקטע":"🎤 הקליטו את כל הקטע","rec-btn",function(){ startFullRec(); }));
     if(rec){
       bar.appendChild(mkBtn("▶ ההקלטה שלי","mine-btn",function(){ playFullMine(); }));

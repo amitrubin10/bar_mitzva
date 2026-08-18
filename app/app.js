@@ -172,7 +172,13 @@ function playVerse(vi, fromWord){
   clearHL();
   active = vi; playingAll = false;
   const startT = (fromWord!=null && t.words[fromWord]) ? t.words[fromWord].s : t.start;
-  stopAt = t.end + 0.04;
+  // stop a bit before the boundary so a single verse doesn't bleed into the next
+  // verse's first word. Verses are contiguous (end[N] == start[N+1]) and audio
+  // pause has ~100-150ms latency, so pull back ~0.12s.
+  stopAt = t.end - 0.12;
+  const nt = timingFor(vi+1);
+  if(nt && nt.start > t.start) stopAt = Math.min(stopAt, nt.start - 0.12);
+  if(stopAt < startT + 0.15) stopAt = startT + 0.15;   // never below a playable minimum
   const row = versesEl.querySelector('.verse[data-vi="'+vi+'"]');
   if(row){ row.classList.add("active"); row.scrollIntoView({behavior:"smooth",block:"center"}); }
   npNum.textContent = VERSES[vi].ref; nowbar.classList.add("show");
@@ -953,7 +959,9 @@ function renderLevel4Bar(){
     bar.appendChild(mkBtn("▶ נגן את כל הקטע","play-full-btn",function(){ playAll(); }));
     bar.appendChild(mkBtn(rec?"🎤 הקליטו שוב את כל הקטע":"🎤 הקליטו את כל הקטע","rec-btn",function(){ startFullRec(); }));
     if(rec){
-      bar.appendChild(mkBtn("▶ ההקלטה שלי","mine-btn",function(){ playFullMine(); }));
+      var minePlaying = fullMine && !fullMine.paused;
+      bar.appendChild(mkBtn(minePlaying?"⏸ עצור השמעה":"▶ ההקלטה שלי","mine-btn",function(){ playFullMine(); }));
+      bar.appendChild(mkBtn("📤 שלח בוואטסאפ","share-btn",function(){ shareFullRec(); }));
       bar.appendChild(mkBtn("🔍 השוואה למקור","cmp-btn",function(){ compareFull(); }));
       bar.appendChild(mkBtn("🗑 מחק","del-btn",function(){ deleteFullRec(); }));
     }
@@ -979,17 +987,44 @@ function startFullRec(){
   }).catch(function(){ uiAlert("לא ניתן לגשת למיקרופון. יש לאשר הרשאת מיקרופון ולנסות שוב.",{icon:"🎤",title:"נדרשת הרשאת מיקרופון"}); });
 }
 function stopFullRec(){ if(fullMR && fullMR.state!=="inactive") fullMR.stop(); }
+function stopFullMine(){
+  if(fullMine){ try{ fullMine.pause(); fullMine.currentTime=0; }catch(e){} }
+}
 function playFullMine(){
   stopAll();
+  // toggle: if my recording is already playing, pressing again stops it
+  if(fullMine && !fullMine.paused){ stopFullMine(); renderLevel4Bar(); return; }
   recGet("full").then(function(rec){ if(!rec) return;
-    if(fullMine){ fullMine.pause(); if(fullMineUrl) URL.revokeObjectURL(fullMineUrl); }
-    fullMineUrl=URL.createObjectURL(rec.blob); fullMine=new Audio(fullMineUrl); fullMine.playbackRate=speed; fullMine.play().catch(function(){});
+    if(fullMine){ try{fullMine.pause();}catch(e){} if(fullMineUrl) URL.revokeObjectURL(fullMineUrl); }
+    fullMineUrl=URL.createObjectURL(rec.blob); fullMine=new Audio(fullMineUrl); fullMine.playbackRate=speed;
+    fullMine.onended=function(){ renderLevel4Bar(); };
+    fullMine.onpause=function(){ renderLevel4Bar(); };
+    fullMine.play().catch(function(){});
+    renderLevel4Bar();
   });
 }
 function deleteFullRec(){
   uiConfirm("למחוק את ההקלטה של כל הקטע?",{icon:"🗑",okText:"מחק",cancelText:"ביטול",danger:true}).then(function(ok){
     if(!ok) return;
+    stopFullMine();                                   // stop playback before removing it
+    if(fullMineUrl){ URL.revokeObjectURL(fullMineUrl); fullMineUrl=null; } fullMine=null;
     recDel("full").then(function(){ clearFullColors(); const l4r=document.getElementById("level4result"); if(l4r) l4r.style.display="none"; renderLevel4Bar(); });
+  });
+}
+// share the recording (WhatsApp etc.) via the native share sheet
+function shareFullRec(){
+  recGet("full").then(function(rec){ if(!rec) return;
+    var mime=rec.mime||(rec.blob&&rec.blob.type)||"audio/webm";
+    var ext=(mime.indexOf("mp4")>=0||mime.indexOf("m4a")>=0)?"m4a":(mime.indexOf("ogg")>=0?"ogg":"webm");
+    var fname="הקלטה-"+((STUDENT&&STUDENT.name)||"תורה-אורי")+"."+ext;
+    var file=null; try{ file=new File([rec.blob],fname,{type:mime}); }catch(e){}
+    if(file && navigator.canShare && navigator.canShare({files:[file]})){
+      navigator.share({files:[file], title:"תורה אורי", text:"ההקלטה שלי · תורה אורי"}).catch(function(){});
+    } else {
+      var a=document.createElement("a"); a.href=URL.createObjectURL(rec.blob); a.download=fname;
+      document.body.appendChild(a); a.click(); a.remove();
+      uiAlert("השיתוף הישיר לא נתמך במכשיר הזה — ההקלטה ירדה למכשיר ותוכלו לשלוח אותה ידנית בוואטסאפ.",{icon:"📤",title:"הורדת ההקלטה"});
+    }
   });
 }
 function clearFullColors(){

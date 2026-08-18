@@ -1,5 +1,5 @@
 /* Service worker — per-student offline shell + media caching (Yuval) */
-const CACHE = "yuval-torah-v5";
+const CACHE = "yuval-torah-v6";
 const ASSETS = [
   "./",
   "./index.html",
@@ -9,8 +9,8 @@ const ASSETS = [
   "./original_env.js",
   "./manifest.webmanifest",
   "./media/full.oga",
-  "../app/app.js",
-  "../app/style.css",
+  "../app/app.js?v=25",
+  "../app/style.css?v=25",
   "../app/fonts/TorahStamAshkenaz.ttf",
   "../app/fonts/TaameyFrankCLM-Medium.ttf",
   "../img/hero-dark.png",

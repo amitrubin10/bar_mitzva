@@ -154,6 +154,8 @@ header.top .sub{color:var(--ink);font-size:1.4rem;font-weight:800;margin-top:6px
 .minibtn.mine-btn{color:var(--accent);border-color:#4a411d}
 .minibtn.mine-btn:hover{border-color:var(--accent);color:#ffe9a8}
 .minibtn.del-btn:hover{border-color:#ff6b6b;color:#ff9a9a}
+.minibtn.share-btn{color:#25d366;border-color:#1f5f3a}
+.minibtn.share-btn:hover{background:#0f2a1a;border-color:#25d366;color:#8ff0b5}
 .minibtn.cmp-btn{color:var(--accent2);border-color:#25406b}
 .minibtn.cmp-btn:hover{border-color:var(--accent2);color:#bcd0ff}
 .rec-timer{color:#ff6b6b;font-weight:700;font-variant-numeric:tabular-nums}
